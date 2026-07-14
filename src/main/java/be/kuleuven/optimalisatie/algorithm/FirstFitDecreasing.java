@@ -88,7 +88,7 @@ public class FirstFitDecreasing implements Algorithm {
                     // eerste geval de trapezium is volledig symmetrisch of de linkse projectie komt het dichtst bij de rechtse projectie van laatste trapezium
                     if ((leftProjectionLengthNewItem == rightProjectionLengthNewItem) || (distanceLeftProjection < distanceRightProjection)) {
                         // berekenen of het past in het patroon
-                        if (patternLength + itemLength - leftProjectionLengthNewItem <= binLength) {
+                        if (patternLength + itemLength - Math.min(leftProjectionLengthNewItem, projectionLengthLastItem) <= binLength) {
                             // past
                             // bepaal eerst de oriëntatie van laatste item
                             if (itemTypeLastItem == 0) {
@@ -114,13 +114,14 @@ public class FirstFitDecreasing implements Algorithm {
                                     itemPlaced = true;
                                 }
                             }
+                            break;
                         }
                     }
 
                     if (distanceRightProjection < distanceLeftProjection) {
                         // rechter projectie is dichter bij de rechter projectie van laatste trapezium
                         // berekenen of deze past in het patroon
-                        if (patternLength+ itemLength - rightProjectionLengthNewItem <= binLength) {
+                        if (patternLength+ itemLength - Math.min(rightProjectionLengthNewItem, projectionLengthLastItem) <= binLength) {
                             // past
                             // bepaal eerst de oriëntatie van laatste item
                             if (itemTypeLastItem == 0) {
@@ -173,6 +174,7 @@ public class FirstFitDecreasing implements Algorithm {
                                     itemPlaced = true;
                                 }
                             }
+                            break;
                         }
                     }
                 }

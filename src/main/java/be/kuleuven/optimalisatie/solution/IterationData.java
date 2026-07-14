@@ -1,0 +1,61 @@
+package be.kuleuven.optimalisatie.solution;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class IterationData {
+    private final int iterationNumber;
+    private double lowerBound;
+    private double upperBound;
+    private final Map<Integer, Double> dualValues;
+    private final List<Pattern> patterns;
+
+    public IterationData(int iterationNumber) {
+        this.iterationNumber = iterationNumber;
+        this.dualValues = new HashMap<>();
+        this.patterns = new ArrayList<>();
+    }
+
+    public int getIterationNumber() {
+        return iterationNumber;
+    }
+
+    public double getLowerBound() {
+        return lowerBound;
+    }
+
+    public void setLowerBound(double lowerBound) {
+        this.lowerBound = lowerBound;
+    }
+
+    public double getUpperBound() {
+        return upperBound;
+    }
+
+    public void setUpperBound(double upperBound) {
+        this.upperBound = upperBound;
+    }
+
+    public void addDualValue(int itemIndex, double dualValue) {
+        this.dualValues.put(itemIndex, dualValue);
+    }
+
+    public Map<Integer, Double> getDualValues() {
+        return dualValues;
+    }
+
+    public void addPattern(Pattern pattern) {
+        this.patterns.add(pattern);
+    }
+
+    public List<Pattern> getPatterns() {
+        return patterns;
+    }
+
+    @Override
+    public String toString() {
+        return iterationNumber == 0 ? "Initiele Oplossing (FFD)" : "CG Iteratie " + iterationNumber;
+    }
+}

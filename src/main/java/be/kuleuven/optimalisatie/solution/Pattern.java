@@ -10,20 +10,25 @@ public class Pattern {
     private boolean lengthCalculated = false;
     private final ArrayList<Trapezoid> items;
     private boolean isUsed;
+    private int count;
+
 
     public Pattern(List<Trapezoid> items, boolean isUsed) {
         this.items = new ArrayList<>(items);
         this.isUsed = isUsed;
+        this.count = 1;
     }
 
     public Pattern(boolean isUsed) {
         this.items = new ArrayList<>();
         this.isUsed = isUsed;
+        this.count = 1;
     }
 
     public Pattern() {
         this.items = new ArrayList<>();
         this.isUsed = false;
+        this.count = 1;
     }
 
     public void addItem(Trapezoid item) {
@@ -41,6 +46,14 @@ public class Pattern {
 
     public void setUsed(boolean used) {
         this.isUsed = used;
+    }
+
+    public int getCount() {
+        return count;
+    }
+
+    public void setCount(int count) {
+        this.count = count;
     }
 
     public int getUsedLength() {
@@ -76,12 +89,13 @@ public class Pattern {
         sb.append("Pattern{");
         sb.append("usedLength=").append(getUsedLength());
         sb.append(", isUsed=").append(isUsed);
+        sb.append(", count=").append(count);
         sb.append(", items=[");
         for (Trapezoid item : items) {
             sb.append(item.toString()).append(", ");
         }
         if (!items.isEmpty()) {
-            sb.setLength(sb.length() - 2); // Remove the last comma and space
+            sb.setLength(sb.length() - 2);
         }
         sb.append("]}");
         return sb.toString();
