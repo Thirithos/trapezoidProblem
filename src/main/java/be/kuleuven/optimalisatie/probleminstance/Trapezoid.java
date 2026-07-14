@@ -8,6 +8,8 @@ public class Trapezoid {
     private final double angle1;
     private final double angle2;
     private final int shapeIndicator;
+    private boolean isFlippedHorizontally = false;
+    private boolean isFlippedVertically = false;
 
     // in datafile formaat is altijd:
     // 1 2463    9    3 85.0 88.0 1
@@ -51,5 +53,44 @@ public class Trapezoid {
 
     public int getShapeIndicator() {
         return shapeIndicator;
+    }
+
+    public void flipHorizontally() {
+        isFlippedHorizontally = !isFlippedHorizontally;
+    }
+
+    public void flipVertically() {
+        isFlippedVertically = !isFlippedVertically;
+    }
+
+    public boolean isFlippedHorizontally() {
+        return isFlippedHorizontally;
+    }
+
+    public boolean isFlippedVertically() {
+        return isFlippedVertically;
+    }
+
+    public int getLeftProjectionLength() {
+        return !isFlippedVertically() ? p1 : p2;
+    }
+
+    public int getRightProjectionLength() {
+        return !isFlippedVertically() ? p2 : p1;
+    }
+
+    @Override
+    public String toString() {
+        return "Trapezoid{" +
+                "numberOfItems=" + numberOfItems +
+                ", totalLength=" + totalLength +
+                ", p1=" + p1 +
+                ", p2=" + p2 +
+                ", angle1=" + angle1 +
+                ", angle2=" + angle2 +
+                ", shapeIndicator=" + shapeIndicator +
+                ", isFlippedHorizontally=" + isFlippedHorizontally +
+                ", isFlippedVertically=" + isFlippedVertically +
+                '}';
     }
 }
