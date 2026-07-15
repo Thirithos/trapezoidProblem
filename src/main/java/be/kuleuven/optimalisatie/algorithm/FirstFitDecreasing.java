@@ -10,7 +10,7 @@ import java.util.List;
 
 public class FirstFitDecreasing implements Algorithm {
     private final TrussProblem problem;
-    private final int binLength = 4200;
+
 
     public FirstFitDecreasing(TrussProblem problem) {
         this.problem = problem;
@@ -189,8 +189,8 @@ public class FirstFitDecreasing implements Algorithm {
         long endTime = System.currentTimeMillis();
         solution.setExecutionTimeMs(endTime - startTime);
 
-        solution.setLowerBound(binLength * solution.getTotalBins());
-        solution.setUpperBound(binLength * solution.getTotalBins());
+        solution.setLowerBound(solution.getTotalBins());
+        solution.setUpperBound(solution.getTotalBins());
 
         return solution;
     }

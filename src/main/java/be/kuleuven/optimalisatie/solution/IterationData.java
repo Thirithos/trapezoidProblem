@@ -1,20 +1,18 @@
 package be.kuleuven.optimalisatie.solution;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class IterationData {
     private final int iterationNumber;
     private double lowerBound;
     private double upperBound;
-    private final Map<Integer, Double> dualValues;
+    private final List<Double> dualValues; // Aangepast naar List
     private final List<Pattern> patterns;
 
     public IterationData(int iterationNumber) {
         this.iterationNumber = iterationNumber;
-        this.dualValues = new HashMap<>();
+        this.dualValues = new ArrayList<>();
         this.patterns = new ArrayList<>();
     }
 
@@ -38,11 +36,11 @@ public class IterationData {
         this.upperBound = upperBound;
     }
 
-    public void addDualValue(int itemIndex, double dualValue) {
-        this.dualValues.put(itemIndex, dualValue);
+    public void addDualValue(double dualValue) {
+        this.dualValues.add(dualValue);
     }
 
-    public Map<Integer, Double> getDualValues() {
+    public List<Double> getDualValues() {
         return dualValues;
     }
 

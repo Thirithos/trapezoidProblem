@@ -1,11 +1,12 @@
 package be.kuleuven.optimalisatie.gui;
 
+import be.kuleuven.optimalisatie.probleminstance.DataLoader;
 import be.kuleuven.optimalisatie.probleminstance.Trapezoid;
+import be.kuleuven.optimalisatie.probleminstance.TrussProblem;
 import be.kuleuven.optimalisatie.solution.IterationData;
 import be.kuleuven.optimalisatie.solution.Pattern;
 
 import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.io.BufferedReader;
 import java.io.File;
@@ -13,25 +14,27 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class SolutionViewer extends JFrame {
 
     private DefaultListModel<IterationData> iterationListModel;
     private JList<IterationData> iterationList;
     private JLabel lblMetadata;
-    private JTable dualsTable;
-    private DefaultTableModel dualsTableModel;
+    private JPanel dualsVisualPanel;
     private JPanel visualizationPanel;
     private List<IterationData> iterations;
     private String problemName;
+    private List<TrussProblem> allProblems;
+    private TrussProblem currentTrussProblem;
 
     public SolutionViewer() {
         setTitle("Optimalisatie Solution Viewer");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(1200, 800);
+        setSize(1300, 800);
         setLocationRelativeTo(null);
 
+        // Laad eenmalig alle orginele problemen in om items visueel te koppelen aan duale waarden
+        allProblems = DataLoader.loadAllProblems();
         iterations = new ArrayList<>();
         initUI();
         loadSolutionFile();
@@ -67,17 +70,14 @@ public class SolutionViewer extends JFrame {
         lblMetadata.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         rightPanel.add(lblMetadata, BorderLayout.NORTH);
 
-        JPanel overviewPanel = new JPanel(new BorderLayout());
-        String[] dualColumnNames = {"Item ID", "Duale Waarde"};
-        dualsTableModel = new DefaultTableModel(dualColumnNames, 0) {
-            @Override
-            public boolean isCellEditable(int row, int column) { return false; }
-        };
-        dualsTable = new JTable(dualsTableModel);
-        JScrollPane dualsScrollPane = new JScrollPane(dualsTable);
-        dualsScrollPane.setBorder(BorderFactory.createTitledBorder("Duale Waarden uit RMP"));
-        overviewPanel.add(dualsScrollPane, BorderLayout.CENTER);
+        // TAB 1: RMP Info (Visualisatie van individuele items met hun duale waarde)
+        dualsVisualPanel = new JPanel();
+        dualsVisualPanel.setLayout(new BoxLayout(dualsVisualPanel, BoxLayout.Y_AXIS));
+        JScrollPane dualsScrollPane = new JScrollPane(dualsVisualPanel);
+        dualsScrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        dualsScrollPane.setBorder(BorderFactory.createEmptyBorder());
 
+        // TAB 2: Patroon Visualisatie (Count + patroon)
         visualizationPanel = new JPanel();
         visualizationPanel.setLayout(new BoxLayout(visualizationPanel, BoxLayout.Y_AXIS));
         JScrollPane visualizationScrollPane = new JScrollPane(visualizationPanel);
@@ -85,7 +85,7 @@ public class SolutionViewer extends JFrame {
         visualizationScrollPane.setBorder(BorderFactory.createEmptyBorder());
 
         JTabbedPane tabbedPane = new JTabbedPane();
-        tabbedPane.addTab("RMP Info", overviewPanel);
+        tabbedPane.addTab("RMP Duale Waarden", dualsScrollPane);
         tabbedPane.addTab("Patroon Visualisatie", visualizationScrollPane);
 
         rightPanel.add(tabbedPane, BorderLayout.CENTER);
@@ -121,6 +121,12 @@ public class SolutionViewer extends JFrame {
 
                 if (line.startsWith("PROBLEM=")) {
                     problemName = line.substring(8);
+                    // Match the correct TrussProblem to be able to draw individual items for duals
+                    currentTrussProblem = allProblems.stream()
+                            .filter(p -> p.getFileName().equals(problemName))
+                            .findFirst()
+                            .orElse(null);
+
                 } else if (line.startsWith("ITERATION=")) {
                     int iterNum = Integer.parseInt(line.substring(10));
                     currentIteration = new IterationData(iterNum);
@@ -134,8 +140,7 @@ public class SolutionViewer extends JFrame {
                 } else if (line.equals("DUALS_END")) {
                     readingDuals = false;
                 } else if (readingDuals && currentIteration != null) {
-                    String[] parts = line.split(":");
-                    currentIteration.addDualValue(Integer.parseInt(parts[0]), Double.parseDouble(parts[1]));
+                    currentIteration.addDualValue(Double.parseDouble(line));
                 } else if (line.equals("PATTERNS_START")) {
                     readingPatterns = true;
                 } else if (line.equals("PATTERNS_END")) {
@@ -154,7 +159,7 @@ public class SolutionViewer extends JFrame {
                     String[] parts = details.split(",");
                     currentPattern.setUsed(parts[0].equals("USED"));
                     if(parts.length > 1 && parts[1].startsWith("COUNT=")) {
-                        currentPattern.setCount(Integer.parseInt(parts[1].substring(6)));
+                        currentPattern.setCount(Double.parseDouble(parts[1].substring(6)));
                     }
                 } else if (readingPatterns && line.startsWith("ITEM=") && currentPattern != null) {
                     String[] parts = line.substring(5).split(",");
@@ -193,11 +198,29 @@ public class SolutionViewer extends JFrame {
         lblMetadata.setText(String.format("<html><b>Probleem:</b> %s<br><b>Iteratie:</b> %d<br><b>Lower Bound:</b> %.2f<br><b>Upper Bound:</b> %.2f</html>",
                 problemName, iteration.getIterationNumber(), iteration.getLowerBound(), iteration.getUpperBound()));
 
-        dualsTableModel.setRowCount(0);
-        for (Map.Entry<Integer, Double> entry : iteration.getDualValues().entrySet()) {
-            dualsTableModel.addRow(new Object[]{entry.getKey(), entry.getValue()});
+        // --- DUAL VALUES VISUALISATIE ---
+        dualsVisualPanel.removeAll();
+        List<Double> dualValues = iteration.getDualValues();
+
+        if (currentTrussProblem != null && !dualValues.isEmpty()) {
+            for (int i = 0; i < dualValues.size(); i++) {
+                // Voorkom fouten als the list met trapezoids groter of kleiner is dan de duals lijst
+                if (i < currentTrussProblem.getTrapezoids().size()) {
+                    Trapezoid t = currentTrussProblem.getTrapezoids().get(i);
+                    double piValue = dualValues.get(i);
+                    dualsVisualPanel.add(new DualValueRowPanel(t, piValue));
+                }
+            }
+        } else if (dualValues.isEmpty()) {
+            JLabel emptyLabel = new JLabel("Geen duale waarden gevonden (bijvoorbeeld in FFD iteratie 0).");
+            emptyLabel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+            dualsVisualPanel.add(emptyLabel);
         }
 
+        dualsVisualPanel.revalidate();
+        dualsVisualPanel.repaint();
+
+        // --- PATRONEN VISUALISATIE ---
         visualizationPanel.removeAll();
         for (Pattern p : iteration.getPatterns()) {
             visualizationPanel.add(new PatternDrawingPanel(p));
@@ -205,6 +228,80 @@ public class SolutionViewer extends JFrame {
 
         visualizationPanel.revalidate();
         visualizationPanel.repaint();
+    }
+    
+    private static class DualValueRowPanel extends JPanel {
+        private final Trapezoid trapezoid;
+        private final double piValue;
+
+        public DualValueRowPanel(Trapezoid trapezoid, double piValue) {
+            this.trapezoid = trapezoid;
+            this.piValue = piValue;
+
+            setLayout(new BorderLayout());
+            setPreferredSize(new Dimension(1000, 70));
+            setMaximumSize(new Dimension(Integer.MAX_VALUE, 70));
+            setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Color.LIGHT_GRAY));
+
+            JPanel leftDrawingPanel = new JPanel() {
+                @Override
+                protected void paintComponent(Graphics g) {
+                    super.paintComponent(g);
+                    Graphics2D g2d = (Graphics2D) g;
+                    g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                    int marginX = 20;
+                    int marginY = 15;
+                    int shapeHeight = 40;
+
+                    // Vaste schaal voor de items links, we gebruiken 1200 als referentiebreedte op scherm
+                    double scale = 500.0 / 4200.0;
+
+                    int L = trapezoid.getTotalLength();
+                    int p1 = trapezoid.getP1();
+                    int p2 = trapezoid.getP2();
+
+                    int[] xPts = new int[4];
+                    int[] yPts = {0, 0, shapeHeight, shapeHeight};
+
+                    // Basisweergave voor duals is origineel (ongeflitpt)
+                    if (trapezoid.getShapeIndicator() == 0) {
+                        xPts[0] = 0;           xPts[1] = L - p2;
+                        xPts[2] = L;           xPts[3] = p1;
+                    } else {
+                        xPts[0] = 0;           xPts[1] = L;
+                        xPts[2] = L - p2;      xPts[3] = p1;
+                    }
+
+                    int[] drawXPts = new int[4];
+                    int[] drawYPts = new int[4];
+                    for (int pt = 0; pt < 4; pt++) {
+                        drawXPts[pt] = marginX + (int)(xPts[pt] * scale);
+                        drawYPts[pt] = marginY + yPts[pt];
+                    }
+
+                    g2d.setColor(new Color(135, 206, 250));
+                    g2d.fillPolygon(drawXPts, drawYPts, 4);
+
+                    g2d.setColor(Color.DARK_GRAY);
+                    g2d.setStroke(new BasicStroke(1.2f));
+                    g2d.drawPolygon(drawXPts, drawYPts, 4);
+
+                    g2d.setColor(Color.BLACK);
+                    g2d.drawString(String.format("L: %d | p1: %d | p2: %d | Vorm: %d", L, p1, p2, trapezoid.getShapeIndicator()), marginX, marginY - 5);
+                }
+            };
+
+            leftDrawingPanel.setPreferredSize(new Dimension(600, 70));
+
+            JLabel rightLabel = new JLabel(String.format("Duale Waarde (\u03C0): %.4f", piValue));
+            rightLabel.setFont(new Font("SansSerif", Font.BOLD, 14));
+            rightLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+            rightLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 40));
+
+            add(leftDrawingPanel, BorderLayout.CENTER);
+            add(rightLabel, BorderLayout.EAST);
+        }
     }
 
     private static class PatternDrawingPanel extends JPanel {
@@ -237,9 +334,10 @@ public class SolutionViewer extends JFrame {
             double scale = (double) drawableWidth / binLength;
 
             g2d.setColor(Color.BLACK);
+            g2d.setFont(new Font("SansSerif", Font.BOLD, 12));
             String status = pattern.isUsed() ? "[GEBRUIKT IN RMP]" : "[ONGEBRUIKT]";
-            g2d.drawString(status + " | Aantal in oplossing: " + pattern.getCount() +
-                    " | Totale lengte: " + pattern.getUsedLength() + " / " + binLength, marginX, marginY - 15);
+            g2d.drawString(String.format("%s | Count (Xj): %.4f | Totale lengte: %d / %d",
+                    status, pattern.getCount(), pattern.getUsedLength(), binLength), marginX, marginY - 15);
 
             g2d.setColor(Color.LIGHT_GRAY);
             g2d.drawRect(marginX, marginY, drawableWidth, shapeHeight);

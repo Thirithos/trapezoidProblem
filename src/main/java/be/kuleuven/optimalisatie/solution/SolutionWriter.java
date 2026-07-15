@@ -7,7 +7,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 
 public class SolutionWriter {
 
@@ -24,9 +23,8 @@ public class SolutionWriter {
         }
     }
 
-
     public static void appendIteration(String outputPath, int iteration, double lb, double ub,
-                                       Map<Integer, Double> duals, List<Pattern> allPatterns) {
+                                       List<Double> duals, List<Pattern> allPatterns) {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputPath, true))) {
             writer.write("ITERATION=" + iteration);
             writer.newLine();
@@ -38,8 +36,9 @@ public class SolutionWriter {
             writer.write("DUALS_START");
             writer.newLine();
             if (duals != null) {
-                for (Map.Entry<Integer, Double> entry : duals.entrySet()) {
-                    writer.write(entry.getKey() + ":" + entry.getValue());
+                // Schrijf nu gewoon puur de double waarden onder elkaar
+                for (Double dual : duals) {
+                    writer.write(dual.toString());
                     writer.newLine();
                 }
             }

@@ -10,7 +10,7 @@ public class Pattern {
     private boolean lengthCalculated = false;
     private final ArrayList<Trapezoid> items;
     private boolean isUsed;
-    private int count;
+    private double count;
 
 
     public Pattern(List<Trapezoid> items, boolean isUsed) {
@@ -48,11 +48,11 @@ public class Pattern {
         this.isUsed = used;
     }
 
-    public int getCount() {
+    public double getCount() {
         return count;
     }
 
-    public void setCount(int count) {
+    public void setCount(double count) {
         this.count = count;
     }
 
@@ -81,6 +81,20 @@ public class Pattern {
             usedLength = length;
         }
         return usedLength;
+    }
+
+    public int countOccurrencesInPattern(Trapezoid type) {
+        int count = 0;
+        for (Trapezoid itemInPattern : items) {
+            // We vergelijken de eigenschappen om te zien of het om exact hetzelfde type gaat
+            if (itemInPattern.getTotalLength() == type.getTotalLength() &&
+                    itemInPattern.getP1() == type.getP1() &&
+                    itemInPattern.getP2() == type.getP2() &&
+                    itemInPattern.getShapeIndicator() == type.getShapeIndicator()) {
+                count++;
+            }
+        }
+        return count;
     }
 
     @Override

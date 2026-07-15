@@ -1,6 +1,7 @@
 package be.kuleuven.optimalisatie;
 
 import be.kuleuven.optimalisatie.algorithm.FirstFitDecreasing;
+import be.kuleuven.optimalisatie.algorithm.RMP;
 import be.kuleuven.optimalisatie.gui.SolutionViewer;
 import be.kuleuven.optimalisatie.probleminstance.DataLoader;
 import be.kuleuven.optimalisatie.probleminstance.TrussProblem;
@@ -8,11 +9,13 @@ import be.kuleuven.optimalisatie.solution.Pattern;
 import be.kuleuven.optimalisatie.solution.Solution;
 import be.kuleuven.optimalisatie.solution.SolutionWriter;
 
+import com.gurobi.gurobi.*;
+
 import javax.swing.SwingUtilities;
 import java.util.HashMap;
 import java.util.List;
 
-public class SingleSolver {
+public class Main {
     public static void main(String[] args) {
         List<TrussProblem> problems = DataLoader.loadAllProblems();
         if (problems.isEmpty()) {
@@ -38,6 +41,8 @@ public class SingleSolver {
                 }
             }
 
+            System.out.println("LB= " + initialSolution.getLowerBound() + ", UB= " + initialSolution.getUpperBound());
+
             initialSolution.getPatterns().forEach(p -> p.setUsed(true));
 
             SolutionWriter.appendIteration(
@@ -45,13 +50,40 @@ public class SingleSolver {
                     0,
                     initialSolution.getLowerBound(),
                     initialSolution.getUpperBound(),
-                    new HashMap<>(),                    // duale waarden
+                    initialSolution.getDualValues(),                    // duale waarden
                     initialSolution.getPatterns()
             );
 
             System.out.println("Initiële oplossing succesvol weggeschreven naar: " + outputPath);
 
-            // TODO: CG
+            GRBEnv env;
+            RMP rmp;
+
+            try {
+                env = new GRBEnv(true);
+                env.set("LogFile", "gurobi.log");
+                env.start();
+
+                rmp = new RMP(currentProblem, initialSolution.getPatterns(), env);
+                rmp.addPatterns(initialSolution.getPatterns());
+                Solution RMPSolution = rmp.solve();
+
+                System.out.println("RMP Oplossing: LB= " + RMPSolution.getLowerBound() + ", UB= " + RMPSolution.getUpperBound());
+
+                SolutionWriter.appendIteration(
+                        outputPath,
+                        1, // Iteratie 1 is de eerste RMP iteratie
+                        RMPSolution.getLowerBound(),
+                        RMPSolution.getUpperBound(),
+                        RMPSolution.getDualValues(),
+                        RMPSolution.getPatterns()
+                );
+
+                env.dispose();
+            } catch (GRBException e) {
+                throw new RuntimeException(e);
+            }
+
         }
 
         System.out.println("Starten van de Solution Viewer GUI...");

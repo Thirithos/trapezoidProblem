@@ -9,10 +9,12 @@ public class Solution {
     private double lowerBound;
     private double upperBound;
     private long executionTimeMs;
+    private List<Double> dualValues;
 
     public Solution(String problemName) {
         this.problemName = problemName;
         this.patterns = new ArrayList<>();
+        this.dualValues = new ArrayList<>();
     }
 
     public void addPattern(Pattern pattern) {
@@ -53,5 +55,13 @@ public class Solution {
 
     public void setExecutionTimeMs(long executionTimeMs) {
         this.executionTimeMs = executionTimeMs;
+    }
+
+    public void setDualValues(List<Double> dualValues) {
+        this.dualValues = dualValues;
+    }
+
+    public List<Double> getDualValues() {
+        return dualValues;
     }
 }
