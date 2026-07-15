@@ -8,15 +8,14 @@ import be.kuleuven.optimalisatie.solution.Solution;
 import java.util.ArrayList;
 import java.util.List;
 
-public class FirstFitDecreasing implements Algorithm {
+public class FirstFitDecreasing {
     private final TrussProblem problem;
-
+    private final int binLength = 4200;
 
     public FirstFitDecreasing(TrussProblem problem) {
         this.problem = problem;
     }
 
-    @Override
     public Solution solve() {
         long startTime = System.currentTimeMillis();
 

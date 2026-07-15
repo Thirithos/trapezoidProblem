@@ -10,7 +10,7 @@ import java.util.List;
 
 import com.gurobi.gurobi.*;
 
-public class RMP implements Algorithm {
+public class RMP  {
     private final TrussProblem problem;
     private final int binLength = 4200;
     private List<Pattern> patterns;
