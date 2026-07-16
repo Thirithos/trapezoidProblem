@@ -5,6 +5,10 @@ import be.kuleuven.optimalisatie.probleminstance.TrussProblem;
 import be.kuleuven.optimalisatie.solution.Pattern;
 import be.kuleuven.optimalisatie.solution.Solution;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -26,20 +30,7 @@ public class RMP  {
         this.problem = problem;
         this.patterns = new ArrayList<>();
         this.env = env;
-
-        // Initialisatie van model
-        this.model = new GRBModel(env);
-        this.model.set(GRB.StringAttr.ModelName, "RMP");
-
         this.itemTypeCount = problem.getNumberOfTrapezoidTypes();
-        this.demandConstraints = new GRBConstr[itemTypeCount+1];
-        this.expressions = new GRBLinExpr[itemTypeCount+1];
-
-        for (int i = 1; i <= itemTypeCount; i++) {
-            this.expressions[i] = new GRBLinExpr();
-        }
-
-        this.model.update();
     }
 
 
@@ -53,10 +44,21 @@ public class RMP  {
         }
     }
 
-    public Solution solve() {
+    public Solution solve(int iterationNumber) {
         Solution solution = new Solution(problem.getFileName());
 
         try {
+            // Initialisatie van model
+            this.model = new GRBModel(env);
+            this.model.set(GRB.StringAttr.ModelName, "RMP_iter_" + iterationNumber);
+
+            this.demandConstraints = new GRBConstr[itemTypeCount+1];
+            this.expressions = new GRBLinExpr[itemTypeCount+1];
+
+            for (int i = 1; i <= itemTypeCount; i++) {
+                this.expressions[i] = new GRBLinExpr();
+            }
+
             GRBVar[] x = new GRBVar[patterns.size()];
             GRBLinExpr objective = new GRBLinExpr();
 
@@ -91,7 +93,12 @@ public class RMP  {
 
             model.update();
 
-            model.write(problem.getFileName() + "_debug_RMP.lp");
+            String modelName = problem.getFileName().substring(0, problem.getFileName().length() - 4);
+
+            Path dir = Paths.get("src", "main", "resources", "ModelsDebug", modelName);
+            Files.createDirectories(dir);
+
+            model.write("src/main/resources/ModelsDebug/"+  modelName + "/iteration_"+ iterationNumber +"_debug_RMP.lp");
 
             model.optimize();
 
@@ -132,6 +139,8 @@ public class RMP  {
 
         } catch (GRBException e) {
             e.printStackTrace();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
 
         return solution;

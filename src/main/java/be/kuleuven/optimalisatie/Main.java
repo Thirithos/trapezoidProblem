@@ -2,6 +2,7 @@ package be.kuleuven.optimalisatie;
 
 import be.kuleuven.optimalisatie.algorithm.FirstFitDecreasing;
 import be.kuleuven.optimalisatie.algorithm.RMP;
+import be.kuleuven.optimalisatie.algorithm.SubProblem;
 import be.kuleuven.optimalisatie.gui.SolutionViewer;
 import be.kuleuven.optimalisatie.probleminstance.DataLoader;
 import be.kuleuven.optimalisatie.probleminstance.TrussProblem;
@@ -66,19 +67,43 @@ public class Main {
 
                 rmp = new RMP(currentProblem, initialSolution.getPatterns(), env);
                 rmp.addPatterns(initialSolution.getPatterns());
-                Solution RMPSolution = rmp.solve();
+                int iterationNumber = 1;
+                Solution RMPSolution = rmp.solve(iterationNumber);
 
-                System.out.println("RMP Oplossing: LB= " + RMPSolution.getLowerBound() + ", UB= " + RMPSolution.getUpperBound());
+                System.out.println("RMP Oplossing Iteratie 1: LB= " + RMPSolution.getLowerBound() + ", UB= " + RMPSolution.getUpperBound());
 
                 SolutionWriter.appendIteration(
                         outputPath,
-                        1, // Iteratie 1 is de eerste RMP iteratie
+                        iterationNumber,
                         RMPSolution.getLowerBound(),
                         RMPSolution.getUpperBound(),
                         RMPSolution.getDualValues(),
                         RMPSolution.getPatterns()
                 );
 
+                Solution RMPSolutionAfterNewPattern = RMPSolution;
+                while (true) {
+                    iterationNumber++;
+                    SubProblem columnGenration = new SubProblem(currentProblem, RMPSolutionAfterNewPattern.getPatterns(), env);
+                    Pattern newPattern = columnGenration.solve(RMPSolutionAfterNewPattern.getDualValues());
+
+                    if(newPattern == null) break;
+
+                    rmp.addPattern(newPattern);
+                    RMPSolutionAfterNewPattern = rmp.solve(iterationNumber);
+
+                    System.out.println("RMP Oplossing Iteratie "+ iterationNumber +": LB= " + RMPSolutionAfterNewPattern.getLowerBound() + ", UB= " + RMPSolutionAfterNewPattern.getUpperBound());
+
+                    SolutionWriter.appendIteration(
+                            outputPath,
+                            iterationNumber,
+                            RMPSolutionAfterNewPattern.getLowerBound(),
+                            RMPSolutionAfterNewPattern.getUpperBound(),
+                            RMPSolutionAfterNewPattern.getDualValues(),
+                            RMPSolutionAfterNewPattern.getPatterns()
+                    );
+
+                }
                 env.dispose();
             } catch (GRBException e) {
                 throw new RuntimeException(e);
