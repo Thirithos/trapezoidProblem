@@ -22,7 +22,7 @@ public class SubProblem {
         this.itemTypeCount = problem.getNumberOfTrapezoidTypes();
     }
 
-    public Pattern solve(List<Double> dualValues) {
+    public Pattern solve(List<Double> dualValues, int iteration) {
         int minLength = Integer.MAX_VALUE;
         int projectionLeft = Integer.MAX_VALUE;
         int projectionRight = Integer.MAX_VALUE;
@@ -74,7 +74,7 @@ public class SubProblem {
 
         Pattern pattern;
         try {
-            pattern = solveWithCapacity(maxItems, dualValues, itemTypeCount);
+            pattern = solveWithCapacity(maxItems, dualValues, itemTypeCount, iteration);
         } catch (GRBException e) {
             e.printStackTrace();
             return null;
@@ -100,19 +100,19 @@ public class SubProblem {
         return null;
     }
 
-    private Pattern solveWithCapacity(int maxItems, List<Double> dualValues, int numItemTypes) throws GRBException {
+    private Pattern solveWithCapacity(int maxItems, List<Double> dualValues, int numItemTypes, int iteration) throws GRBException {
         try {
             model = new GRBModel(env);
             model.set(GRB.StringAttr.ModelName, "PricingProblem");
             model.set(GRB.IntParam.OutputFlag, 0);
             model.set(GRB.IntParam.Symmetry, 2);
 
-            // Beslissingsvariabelen: y[i][fV][k] = 1 als itemtype i, met verticale flip fV (0 of 1), op positie k in het patroon wordt geplaatst
+            // Beslissingsvariabelen: y[i][flippedVertical][k] = 1 als itemtype i, met verticale flip flippedVertical (0 of 1), op positie k in het patroon wordt geplaatst
             GRBVar[][][] y = new GRBVar[numItemTypes][2][maxItems];
             for (int i = 0; i < numItemTypes; i++) {
-                for (int fV = 0; fV <= 1; fV++) {
+                for (int flippedVertical = 0; flippedVertical <= 1; flippedVertical++) {
                     for (int k = 0; k < maxItems; k++) {
-                        y[i][fV][k] = model.addVar(0.0, 1.0, 0.0, GRB.BINARY, "y_" + i + "_" + fV + "_" + k);
+                        y[i][flippedVertical][k] = model.addVar(0.0, 1.0, 0.0, GRB.BINARY, "y_" + i + "_" + flippedVertical + "_" + k);
                     }
                 }
             }
@@ -123,19 +123,19 @@ public class SubProblem {
                 o[k] = model.addVar(0.0, binLength, 0.0, GRB.CONTINUOUS, "o_" + k);
             }
 
-            // Objective functie: max w = sum(pi[i] * sul(y[i][fV][k])) dus de totale winst van duale waarden (pi[i]) van gebruikte items (sum(y[i][fV][k])) in het nieuwe patroon
+            // Objective functie: max w = sum(pi[i] * sul(y[i][flippedVertical][k])) dus de totale winst van duale waarden (pi[i]) van gebruikte items (sum(y[i][flippedVertical][k])) in het nieuwe patroon
             GRBLinExpr objective = new GRBLinExpr();
             for (int i = 0; i < numItemTypes; i++) {
                 double pi = dualValues.get(i);
-                for (int fV = 0; fV <= 1; fV++) {
+                for (int flippedVertical = 0; flippedVertical <= 1; flippedVertical++) {
                     for (int k = 0; k < maxItems; k++) {
-                        objective.addTerm(pi, y[i][fV][k]);
+                        objective.addTerm(pi, y[i][flippedVertical][k]);
                     }
                 }
             }
             model.setObjective(objective, GRB.MAXIMIZE);
 
-            // Projecties per (itemtype, fV) EENMAAL vooraf berekenen i.p.v. opnieuw voor elke k.
+            // Projecties per (itemtype, flippedVertical) als lookup tabel
             double[][] leftProj = new double[numItemTypes][2];
             double[][] rightProj = new double[numItemTypes][2];
             for (int i = 0; i < numItemTypes; i++) {
@@ -147,28 +147,28 @@ public class SubProblem {
             }
 
             // Beperking:
-            // sum(y[i][fV][k]) <= demand[i] voor alle i, dus het aantal gekozen items van type i mag niet groter zijn dan de vraag naar dat itemtype.
+            // sum(y[i][flippedVertical][k]) <= demand[i] voor alle i, dus het aantal gekozen items van type i mag niet groter zijn dan de vraag naar dat itemtype.
             for (int i = 0; i < numItemTypes; i++) {
                 int demand = problem.getTrapezoids().get(i).getNumberOfItems();
                 GRBLinExpr sumY_i = new GRBLinExpr();
-                for (int fV = 0; fV <= 1; fV++) {
+                for (int flippedVertical = 0; flippedVertical <= 1; flippedVertical++) {
                     for (int k = 0; k < maxItems; k++) {
-                        sumY_i.addTerm(1.0, y[i][fV][k]);
+                        sumY_i.addTerm(1.0, y[i][flippedVertical][k]);
                     }
                 }
                 model.addConstr(sumY_i, GRB.LESS_EQUAL, demand, "Demand_" + i);
             }
 
             // Beperking:
-            // sum(y[i][fV][k]) <= 1 voor alle i en fV, dus er kan maximaal 1 item in een slot (positie) worden geplaatst.
+            // sum(y[i][flippedVertical][k]) <= 1 voor alle i en flippedVertical, dus er kan maximaal 1 item in een slot (positie) worden geplaatst.
             // Beperking:
-            // sum(y[i][fV][k]) <= sum(y[i][fV][k-1]) voor alle i en fV, dus er kan geen item in een slot (positie) worden geplaatst als het vorige slot leeg is.
+            // sum(y[i][flippedVertical][k]) <= sum(y[i][flippedVertical][k-1]) voor alle i en flippedVertical, dus er kan geen item in een slot (positie) worden geplaatst als het vorige slot leeg is.
             GRBLinExpr[] slotUsage = new GRBLinExpr[maxItems];
             for (int k = 0; k < maxItems; k++) {
                 slotUsage[k] = new GRBLinExpr();
                 for (int i = 0; i < numItemTypes; i++) {
-                    for (int fV = 0; fV <= 1; fV++) {
-                        slotUsage[k].addTerm(1.0, y[i][fV][k]);
+                    for (int flippedVertical = 0; flippedVertical <= 1; flippedVertical++) {
+                        slotUsage[k].addTerm(1.0, y[i][flippedVertical][k]);
                     }
                 }
                 model.addConstr(slotUsage[k], GRB.LESS_EQUAL, 1.0, "MaxOnePerSlot_" + k);
@@ -178,10 +178,10 @@ public class SubProblem {
             }
 
             // Beperking:
-            // o[k] <= sum(rightProj[i][fV] * y[i][fV][k]) voor alle i en fV, dus de overlap tussen item op positie k en
+            // o[k] <= sum(rightProj[i][flippedVertical] * y[i][flippedVertical][k]) voor alle i en flippedVertical, dus de overlap tussen item op positie k en
             // item op positie k+1 is kleiner of gelijk aan de rechterprojectie van het item op positie k.
             // Beperking:
-            // o[k] <= sum(leftProj[i][fV] * y[i][fV][k + 1]) voor alle i en fV, dus de overlap tussen item op
+            // o[k] <= sum(leftProj[i][flippedVertical] * y[i][flippedVertical][k + 1]) voor alle i en flippedVertical, dus de overlap tussen item op
             // positie k en item op positie k+1 is kleiner of gelijk aan de linkerprojectie van het item op positie k+1.
 
             // deze twee beperkingen zorgen dus dat overlap tussen twee items bounded is tussen de linker en rechterpojecties van de items
@@ -190,9 +190,9 @@ public class SubProblem {
                 GRBLinExpr leftProjK1 = new GRBLinExpr();
 
                 for (int i = 0; i < numItemTypes; i++) {
-                    for (int fV = 0; fV <= 1; fV++) {
-                        rightProjK.addTerm(rightProj[i][fV], y[i][fV][k]);
-                        leftProjK1.addTerm(leftProj[i][fV], y[i][fV][k + 1]);
+                    for (int flippedVertical = 0; flippedVertical <= 1; flippedVertical++) {
+                        rightProjK.addTerm(rightProj[i][flippedVertical], y[i][flippedVertical][k]);
+                        leftProjK1.addTerm(leftProj[i][flippedVertical], y[i][flippedVertical][k + 1]);
                     }
                 }
 
@@ -201,16 +201,14 @@ public class SubProblem {
             }
 
             // Beperking:
-            // sum(len[i] * y[i][fV][k]) - sum(o[k]) <= binLength, dus de totale lengte van alle gekozen items minus de overlap tussen opeenvolgende
+            // sum(len[i] * y[i][flippedVertical][k]) - sum(o[k]) <= binLength, dus de totale lengte van alle gekozen items minus de overlap tussen opeenvolgende
             // items moet kleiner of gelijk zijn aan de maximale lengte van de bin.
-
-
             GRBLinExpr totalLengthExpr = new GRBLinExpr();
             for (int i = 0; i < numItemTypes; i++) {
                 double len = problem.getTrapezoids().get(i).getTotalLength();
-                for (int fV = 0; fV <= 1; fV++) {
+                for (int flippedVertical = 0; flippedVertical <= 1; flippedVertical++) {
                     for (int k = 0; k < maxItems; k++) {
-                        totalLengthExpr.addTerm(len, y[i][fV][k]);
+                        totalLengthExpr.addTerm(len, y[i][flippedVertical][k]);
                     }
                 }
             }
@@ -218,7 +216,8 @@ public class SubProblem {
                 totalLengthExpr.addTerm(-1.0, o[k]);
             }
             model.addConstr(totalLengthExpr, GRB.LESS_EQUAL, binLength, "Max_Bin_Length");
-
+            model.update();
+            model.write("src/main/resources/ModelsDebug/" + problem.getFileName().replace(".txt","") + "/sub_iter_" + iteration + ".lp");
             model.optimize();
 
             int status = model.get(GRB.IntAttr.Status);
@@ -237,8 +236,8 @@ public class SubProblem {
                     for (int k = 0; k < maxItems; k++) {
                         boolean slotFilled = false;
                         for (int i = 0; i < numItemTypes && !slotFilled; i++) {
-                            for (int fV = 0; fV <= 1; fV++) {
-                                if (y[i][fV][k].get(GRB.DoubleAttr.X) > 0.5) {
+                            for (int flippedVertical = 0; flippedVertical <= 1; flippedVertical++) {
+                                if (y[i][flippedVertical][k].get(GRB.DoubleAttr.X) > 0.5) {
                                     Trapezoid type = problem.getTrapezoids().get(i);
                                     Trapezoid item = new Trapezoid(
                                             1,
@@ -249,13 +248,11 @@ public class SubProblem {
                                             type.getAngle2(),
                                             type.getShapeIndicator()
                                     );
-                                    boolean verticalFlip = (fV == 1);
+                                    boolean verticalFlip = (flippedVertical == 1);
                                     if (verticalFlip) {
                                         item.flipVertically();
                                     }
-                                    // Horizontaal spiegelen verandert getUsedLength() niet (die kijkt
-                                    // enkel naar isFlippedVertically()), maar bepaalt wel de visuele/
-                                    // fysieke richting van de schuine rand t.o.v. het vorige item.
+                                    // horizontaal flippen heeft hier geen invloed op de totale lengte zoals paper zegt maar voor te visualiseren wel belangrijk
                                     if (needsHorizontalFlip(verticalFlip, type.getShapeIndicator(), lastItemAdded)) {
                                         item.flipHorizontally();
                                     }
@@ -286,51 +283,55 @@ public class SubProblem {
         }
     }
 
-    /**
-     * Repliceert de orientatielogica van FirstFitDecreasing: bepaalt of het huidige
-     * item, bovenop zijn verticale flip, ook horizontaal gespiegeld moet worden zodat
-     * zijn schuine rand visueel/fysiek aansluit op de rand van het vorige item in het
-     * patroon. Horizontaal spiegelen heeft geen invloed op getLeftProjectionLength()/
-     * getRightProjectionLength() (die kijken enkel naar isFlippedVertically()), dus dit
-     * verandert Pattern.getUsedLength() niet - het gaat puur over de juiste tekening/
-     * fysieke pasvorm, niet over de haalbaarheid qua lengte.
-     *
-     * @param currentNeedsVerticalFlip of dit item verticaal gespiegeld is (fV == 1)
-     * @param currentShapeIndicator    shapeIndicator van dit item
-     * @param lastItem                 het vorige, al georiënteerde item in het patroon, of null voor het eerste item
-     */
     private static boolean needsHorizontalFlip(boolean currentNeedsVerticalFlip, int currentShapeIndicator, Trapezoid lastItem) {
+        // om de juiste nesting te bekomen wat het LP model verwacht
         if (lastItem == null) {
-            // Eerste item van het patroon: niets om mee te nesten. Orientatie is vrij,
-            // exact zoals FirstFitDecreasing het eerste item van een patroon ook nooit flipt.
+            // Eerste item van het patroon
             return false;
         }
 
-        boolean lastFH = lastItem.isFlippedHorizontally();
-        boolean lastFV = lastItem.isFlippedVertically();
+        boolean lastFlippedHorizontally = lastItem.isFlippedHorizontally();
+        boolean lastFlippedVertically = lastItem.isFlippedVertically();
         int lastShape = lastItem.getShapeIndicator();
 
         if (!currentNeedsVerticalFlip) {
-            // Analoog aan het "eerste geval" in FirstFitDecreasing (native linkerprojectie
-            // van dit item wordt gebruikt - hangt enkel af van de orientatie van het vorige item)
             if (lastShape == 0) {
-                return lastFH != lastFV;
+                return lastFlippedHorizontally != lastFlippedVertically;
+                // als beide true zijn dan is orientatie \      in beide gevallen voor de nieuwe item type is er geen horizontale flip nodig,
+                // omdat nieuwe item type niet geflipt is en dus altijd \ is
             } else {
-                return !lastFH;
+                return !lastFlippedHorizontally;
+                //     zolang laatste item niet horizontaal geflipt is dan is de project / en dus moet er horizontaal geflipt worden in beide gevallen
             }
         } else {
-            // Analoog aan het "tweede geval" in FirstFitDecreasing (native rechterprojectie
-            // van dit item wordt gebruikt - hangt ook af van de shape van dit item)
             if (lastShape == 0) {
-                if (lastFH == lastFV) {
+                // iets complexer want er zijn meerdere mogelijkheden  shape 0  \\
+                if (lastFlippedHorizontally == lastFlippedVertically) {
+                    // als er zowel horizontaal en verticaal geflipt zijn dan is projectie \\
                     return currentShapeIndicator == 0;
+                    // er is slechts 1 flip gedaan in nieuwe shape:
+                    // bij shape 0 is dit // dus horizontale flip nodig om \ te bekomen bij de linkerprojectie
+                    // bij shape 1 is dit \/, is dus al genest
                 } else {
+                    // in de andere gevallen is projectie /
+                    // want als de vorige maar 1 flip heeft gedaan in shape 0 dan is projectie //
+                    // er wordt slechts 1 flip gedaan in nieuwe shape
+                    // bij shape 0 is dit //
+                    // bij shape 1 is dit \/ dus nog eens horizontaal flippen is nodig om / te bekomen bij de linkerprojectie
                     return currentShapeIndicator != 0;
                 }
             } else {
-                if (!lastFH) {
+                if (!lastFlippedHorizontally) {
+                    // als er geen horizontale flip is gedaan bij vorige dan is de shape \/
+                    // shape 0 wordt verticaal geflipt en dus is het // er moet niet horizontaal geflipt worden
+                    // shape 1 wordt verticaal geflipt en dus is het \/, er kan niet worden genest
+                    // dus horizontale flip is nodig
                     return currentShapeIndicator != 0;
                 } else {
+                    // er is geflipt bij vorige item dus shape is /\
+                    // bij shape 0 wordt verticaal geflipt en dus is het // geen nesting, dus horizontale flip is nodig
+                    // bij shape 1 wordt verticaal geflipt en dus is het \/
+                    // er kan genest worden, dus horizontale flip is niet nodig
                     return currentShapeIndicator == 0;
                 }
             }

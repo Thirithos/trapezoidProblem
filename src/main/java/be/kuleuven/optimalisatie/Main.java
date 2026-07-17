@@ -1,8 +1,6 @@
 package be.kuleuven.optimalisatie;
 
-import be.kuleuven.optimalisatie.algorithm.FirstFitDecreasing;
-import be.kuleuven.optimalisatie.algorithm.RMP;
-import be.kuleuven.optimalisatie.algorithm.SubProblem;
+import be.kuleuven.optimalisatie.algorithm.*;
 import be.kuleuven.optimalisatie.gui.SolutionViewer;
 import be.kuleuven.optimalisatie.probleminstance.DataLoader;
 import be.kuleuven.optimalisatie.probleminstance.TrussProblem;
@@ -23,7 +21,7 @@ public class Main {
             return;
         }
 
-        for (int i =0 ; i<1 ; i++) {
+        for (int i =problems.size()-1 ; i<problems.size() ; i++) {
             TrussProblem currentProblem = problems.get(i);
             System.out.println("Probleem geladen: " + currentProblem.getFileName());
 
@@ -46,6 +44,7 @@ public class Main {
 
             SolutionWriter.appendIteration(
                     outputPath,
+                    "Initial solution after FFD",
                     0,
                     initialSolution.getLowerBound(),
                     initialSolution.getUpperBound(),
@@ -65,7 +64,7 @@ public class Main {
                 env.start();
 
                 iterStart = System.currentTimeMillis();
-                rmp = new RMP(currentProblem, initialSolution.getPatterns(), env);
+                rmp = new RMP(currentProblem, env);
                 rmp.addPatterns(initialSolution.getPatterns());
                 int iterationNumber = 1;
                 Solution RMPSolution = rmp.solve(iterationNumber);
@@ -76,6 +75,7 @@ public class Main {
 
                 SolutionWriter.appendIteration(
                         outputPath,
+                        "RMP after FFD: ",
                         iterationNumber,
                         RMPSolution.getLowerBound(),
                         RMPSolution.getUpperBound(),
@@ -89,7 +89,7 @@ public class Main {
                     iterationNumber++;
                     SubProblem columnGenration = new SubProblem(currentProblem, env);
                     iterStart = System.currentTimeMillis();
-                    Pattern newPattern = columnGenration.solve(RMPSolutionAfterNewPattern.getDualValues());
+                    Pattern newPattern = columnGenration.solve(RMPSolutionAfterNewPattern.getDualValues(), iterationNumber);
 
                     if(newPattern == null) break;
 
@@ -101,6 +101,7 @@ public class Main {
 
                     SolutionWriter.appendIteration(
                             outputPath,
+                            "RMP Iteration: " + iterationNumber,
                             iterationNumber,
                             RMPSolutionAfterNewPattern.getLowerBound(),
                             RMPSolutionAfterNewPattern.getUpperBound(),
@@ -108,8 +109,25 @@ public class Main {
                             RMPSolutionAfterNewPattern.getPatterns(),
                             iterDuration
                     );
-
                 }
+
+                DivingHeuristic divingHeuristic = new ILPHeuristic(rmp.getModel());
+                iterStart = System.currentTimeMillis();
+                Solution finalSolution = divingHeuristic.solve(RMPSolutionAfterNewPattern);
+                iterDuration = System.currentTimeMillis() - iterStart;
+
+                System.out.println("Finale Oplossing na Diving Heuristic: LB= " + finalSolution.getLowerBound() + ", UB= " + finalSolution.getUpperBound());
+                SolutionWriter.appendIteration(
+                        outputPath,
+                        "ILP solution",
+                        iterationNumber,
+                        finalSolution.getLowerBound(),
+                        finalSolution.getUpperBound(),
+                        finalSolution.getDualValues(),
+                        finalSolution.getPatterns(),
+                        iterDuration
+                );
+
                 env.dispose();
             } catch (GRBException e) {
                 throw new RuntimeException(e);

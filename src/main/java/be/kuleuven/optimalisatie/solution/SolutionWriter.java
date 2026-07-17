@@ -23,9 +23,13 @@ public class SolutionWriter {
         }
     }
 
-    public static void appendIteration(String outputPath, int iteration, double lb, double ub,
-                                       List<Double> duals, List<Pattern> allPatterns, long iterationTimeMs) {
+    public static void appendIteration(String outputPath, String title, int iteration,
+                                       double lb, double ub,
+                                       List<Double> duals, List<Pattern> allPatterns,
+                                       long iterationTimeMs) {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputPath, true))) {
+            writer.write("STEP=" + title);
+            writer.newLine();
             writer.write("ITERATION=" + iteration);
             writer.newLine();
             writer.write("LB=" + lb);
@@ -38,7 +42,6 @@ public class SolutionWriter {
             writer.write("DUALS_START");
             writer.newLine();
             if (duals != null) {
-                // Schrijf nu gewoon puur de double waarden onder elkaar
                 for (Double dual : duals) {
                     writer.write(dual.toString());
                     writer.newLine();

@@ -37,9 +37,7 @@ public class FirstFitDecreasing {
 
         individualItems.sort((t1, t2) -> Integer.compare(t2.getTotalLength(), t1.getTotalLength()));
 
-        Solution solution = new Solution(problem.getFileName());
-
-
+        List<Pattern> originalPatterns = new ArrayList<>();
 
         // onthoud type nul shape ziet er standaard uit:
         //          __________
@@ -55,14 +53,13 @@ public class FirstFitDecreasing {
         for (int i = 0; i < individualItems.size(); i++) {
             // we nemen het item en proberen het in een bestaand patroon te plaatsen.
             // door telkens te nesten
-            if (solution.getPatterns().isEmpty()) {
+            if (originalPatterns.isEmpty()) {
                 Pattern newPattern = new Pattern(true);
                 newPattern.addItem(individualItems.get(i));
-                solution.addPattern(newPattern);
+                originalPatterns.add(newPattern);
             } else {
-                List<Pattern> patterns = solution.getPatterns();
                 boolean itemPlaced = false;
-                for (Pattern pattern : patterns) {
+                for (Pattern pattern : originalPatterns) {
                     int patternLength = pattern.getUsedLength();
                     int itemLength = individualItems.get(i).getTotalLength();
                     int itemTypeNewItem = individualItems.get(i).getShapeIndicator();
@@ -149,7 +146,7 @@ public class FirstFitDecreasing {
                                     itemPlaced = true;
                                 }
                             } else {
-                                if ((!isFlippedHorizontally && !isFlippedVertically) || (!isFlippedHorizontally && isFlippedVertically)) {
+                                if (!isFlippedHorizontally) {
                                     // orientatie van projectie is /
                                     // type 0 moet enkel verticaal spiegelen, type 1 horizontaal en verticaal spiegelen
                                     if (itemTypeNewItem == 0) {
@@ -180,16 +177,73 @@ public class FirstFitDecreasing {
                 if (!itemPlaced) {
                     Pattern newPattern = new Pattern(true);
                     newPattern.addItem(individualItems.get(i));
-                    solution.addPattern(newPattern);
+                    originalPatterns.add(newPattern);
                 }
             }
         }
 
+        // Merge identieke patronen
+
+        List<Pattern> mergedPatterns = new ArrayList<>();
+        int totalBins = 0;
+
+        for (Pattern p : originalPatterns) {
+            boolean foundDuplicate = false;
+            for (Pattern m : mergedPatterns) {
+                if (m.getItems().size() == p.getItems().size()) {
+                    boolean identical = true;
+                    // elk item in het patroon vergelijken met het item in het andere patroon
+                    // als er een verschil is, dan zijn de patronen niet identiek
+                    for (int idx = 0; idx < p.getItems().size(); idx++) {
+                        Trapezoid a = p.getItems().get(idx);
+                        Trapezoid b = m.getItems().get(idx);
+                        if (a.getTotalLength() != b.getTotalLength() ||
+                                a.getP1() != b.getP1() ||
+                                a.getP2() != b.getP2() ||
+                                a.getShapeIndicator() != b.getShapeIndicator() ||
+                                a.isFlippedHorizontally() != b.isFlippedHorizontally() ||
+                                a.isFlippedVertically() != b.isFlippedVertically()) {
+                            identical = false;
+                            break;
+                        }
+                    }
+                    if (identical) {
+                        // verhoog aantal geselcteerde patronen met het aantal van het huidige patroon
+                        m.setCount(m.getCount() + p.getCount());
+                        foundDuplicate = true;
+                        break;
+                    }
+                }
+            }
+            if (!foundDuplicate) {
+                // het patroon bestaat nog niet in de lijst van samengevoegde patronen, dus voeg het toe want het is uniek
+                Pattern copy = new Pattern(true);
+                for (Trapezoid t : p.getItems()) {
+                    // om inconsistenties te vermijden, diepe kopie
+                    Trapezoid clone = new Trapezoid(1, t.getTotalLength(), t.getP1(), t.getP2(),
+                            t.getAngle1(), t.getAngle2(), t.getShapeIndicator());
+                    if (t.isFlippedHorizontally()) clone.flipHorizontally();
+                    if (t.isFlippedVertically()) clone.flipVertically();
+                    copy.addItem(clone);
+                }
+                copy.setCount(p.getCount());
+                mergedPatterns.add(copy);
+            }
+        }
+
+        for (Pattern m : mergedPatterns) {
+            totalBins += (int) m.getCount();
+        }
+
+        Solution solution = new Solution(problem.getFileName());
+        for (Pattern m : mergedPatterns) {
+            solution.addPattern(m);
+        }
+
         long endTime = System.currentTimeMillis();
         solution.setExecutionTimeMs(endTime - startTime);
-
-        solution.setLowerBound(solution.getTotalBins());
-        solution.setUpperBound(solution.getTotalBins());
+        solution.setLowerBound(totalBins);
+        solution.setUpperBound(totalBins);
 
         return solution;
     }

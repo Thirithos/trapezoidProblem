@@ -21,6 +21,12 @@ public class Solution {
         this.patterns.add(pattern);
     }
 
+    public void addPattern(Pattern pattern, int count) {
+        pattern.setCount(count);
+        pattern.setUsed(true);
+        this.patterns.add(pattern);
+    }
+
     public String getProblemName() {
         return problemName;
     }

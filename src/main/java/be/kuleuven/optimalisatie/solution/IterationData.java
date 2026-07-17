@@ -7,13 +7,15 @@ public class IterationData {
     private final int iterationNumber;
     private double lowerBound;
     private double upperBound;
-    private final List<Double> dualValues; // Aangepast naar List
+    private final List<Double> dualValues;
     private final List<Pattern> patterns;
+    private String title;
 
-    public IterationData(int iterationNumber) {
+    public IterationData(int iterationNumber, String title) {
         this.iterationNumber = iterationNumber;
         this.dualValues = new ArrayList<>();
         this.patterns = new ArrayList<>();
+        this.title = title;
     }
 
     public int getIterationNumber() {
@@ -52,8 +54,15 @@ public class IterationData {
         return patterns;
     }
 
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
+
     @Override
     public String toString() {
+        if (title != null && !title.isEmpty()) {
+            return title;
+        }
+
         return iterationNumber == 0 ? "Initiele Oplossing (FFD)" : "CG Iteratie " + iterationNumber;
     }
 }

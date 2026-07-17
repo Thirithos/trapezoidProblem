@@ -16,16 +16,14 @@ import com.gurobi.gurobi.*;
 
 public class RMP  {
     private final TrussProblem problem;
-    private List<Pattern> patterns;
+    private final List<Pattern> patterns;
 
-    private GRBEnv env;
+    private final GRBEnv env;
     private GRBModel model;
-    private GRBConstr[] demandConstraints;
-    private GRBLinExpr[] expressions;
 
-    private int itemTypeCount;
+    private final int itemTypeCount;
 
-    public RMP(TrussProblem problem, List<Pattern> patterns, GRBEnv env) throws GRBException {
+    public RMP(TrussProblem problem, GRBEnv env) throws GRBException {
         this.problem = problem;
         this.patterns = new ArrayList<>();
         this.env = env;
@@ -52,11 +50,11 @@ public class RMP  {
             model.set(GRB.StringAttr.ModelName, "RMP_iter_" + iterationNumber);
             model.set(GRB.IntParam.OutputFlag, 0);
 
-            this.demandConstraints = new GRBConstr[itemTypeCount+1];
-            this.expressions = new GRBLinExpr[itemTypeCount+1];
+            GRBConstr[] demandConstraints = new GRBConstr[itemTypeCount + 1];
+            GRBLinExpr[] expressions = new GRBLinExpr[itemTypeCount + 1];
 
             for (int i = 1; i <= itemTypeCount; i++) {
-                this.expressions[i] = new GRBLinExpr();
+                expressions[i] = new GRBLinExpr();
             }
 
             GRBVar[] x = new GRBVar[patterns.size()];
@@ -144,5 +142,9 @@ public class RMP  {
         }
 
         return solution;
+    }
+
+    public GRBModel getModel() {
+        return model;
     }
 }
