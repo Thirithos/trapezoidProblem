@@ -16,7 +16,6 @@ import com.gurobi.gurobi.*;
 
 public class RMP  {
     private final TrussProblem problem;
-    private final int binLength = 4200;
     private List<Pattern> patterns;
 
     private GRBEnv env;
@@ -49,8 +48,9 @@ public class RMP  {
 
         try {
             // Initialisatie van model
-            this.model = new GRBModel(env);
-            this.model.set(GRB.StringAttr.ModelName, "RMP_iter_" + iterationNumber);
+            model = new GRBModel(env);
+            model.set(GRB.StringAttr.ModelName, "RMP_iter_" + iterationNumber);
+            model.set(GRB.IntParam.OutputFlag, 0);
 
             this.demandConstraints = new GRBConstr[itemTypeCount+1];
             this.expressions = new GRBLinExpr[itemTypeCount+1];
@@ -102,8 +102,8 @@ public class RMP  {
 
             model.optimize();
 
-            int optimStatus = model.get(GRB.IntAttr.Status);
-            if (optimStatus == GRB.Status.OPTIMAL) {
+            int optimalStatus = model.get(GRB.IntAttr.Status);
+            if (optimalStatus == GRB.Status.OPTIMAL) {
                 double objVal = model.get(GRB.DoubleAttr.ObjVal);
                 solution.setLowerBound(objVal);
 
@@ -134,7 +134,7 @@ public class RMP  {
                 solution.setDualValues(dualValues);
 
             } else {
-                System.err.println("Geen optimale oplossing gevonden. Status code: " + optimStatus);
+                System.err.println("Geen optimale oplossing gevonden. Status code: " + optimalStatus);
             }
 
         } catch (GRBException e) {

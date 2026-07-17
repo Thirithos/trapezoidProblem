@@ -24,13 +24,15 @@ public class SolutionWriter {
     }
 
     public static void appendIteration(String outputPath, int iteration, double lb, double ub,
-                                       List<Double> duals, List<Pattern> allPatterns) {
+                                       List<Double> duals, List<Pattern> allPatterns, long iterationTimeMs) {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputPath, true))) {
             writer.write("ITERATION=" + iteration);
             writer.newLine();
             writer.write("LB=" + lb);
             writer.newLine();
             writer.write("UB=" + ub);
+            writer.newLine();
+            writer.write("ITERATION_TIME=" + iterationTimeMs);
             writer.newLine();
 
             writer.write("DUALS_START");

@@ -33,7 +33,6 @@ public class SolutionViewer extends JFrame {
         setSize(1300, 800);
         setLocationRelativeTo(null);
 
-        // Laad eenmalig alle orginele problemen in om items visueel te koppelen aan duale waarden
         allProblems = DataLoader.loadAllProblems();
         iterations = new ArrayList<>();
         initUI();
@@ -70,14 +69,12 @@ public class SolutionViewer extends JFrame {
         lblMetadata.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         rightPanel.add(lblMetadata, BorderLayout.NORTH);
 
-        // TAB 1: RMP Info (Visualisatie van individuele items met hun duale waarde)
         dualsVisualPanel = new JPanel();
         dualsVisualPanel.setLayout(new BoxLayout(dualsVisualPanel, BoxLayout.Y_AXIS));
         JScrollPane dualsScrollPane = new JScrollPane(dualsVisualPanel);
         dualsScrollPane.getVerticalScrollBar().setUnitIncrement(16);
         dualsScrollPane.setBorder(BorderFactory.createEmptyBorder());
 
-        // TAB 2: Patroon Visualisatie (Count + patroon)
         visualizationPanel = new JPanel();
         visualizationPanel.setLayout(new BoxLayout(visualizationPanel, BoxLayout.Y_AXIS));
         JScrollPane visualizationScrollPane = new JScrollPane(visualizationPanel);
@@ -121,7 +118,6 @@ public class SolutionViewer extends JFrame {
 
                 if (line.startsWith("PROBLEM=")) {
                     problemName = line.substring(8);
-                    // Match the correct TrussProblem to be able to draw individual items for duals
                     currentTrussProblem = allProblems.stream()
                             .filter(p -> p.getFileName().equals(problemName))
                             .findFirst()
@@ -204,7 +200,6 @@ public class SolutionViewer extends JFrame {
 
         if (currentTrussProblem != null && !dualValues.isEmpty()) {
             for (int i = 0; i < dualValues.size(); i++) {
-                // Voorkom fouten als the list met trapezoids groter of kleiner is dan de duals lijst
                 if (i < currentTrussProblem.getTrapezoids().size()) {
                     Trapezoid t = currentTrussProblem.getTrapezoids().get(i);
                     double piValue = dualValues.get(i);
@@ -229,7 +224,60 @@ public class SolutionViewer extends JFrame {
         visualizationPanel.revalidate();
         visualizationPanel.repaint();
     }
-    
+
+    /**
+     * Berekent de x-coördinaten (in volgorde: top-links, top-rechts, bottom-rechts, bottom-links)
+     * voor een trapezium van totale lengte L, projecties p1/p2, shape-indicator en flips (fH,fV).
+     * De coördinaten worden zo geplaatst dat de meest linkse x-waarde 0 is.
+     */
+    private static int[] computeLocalCoords(int L, int p1, int p2, int shape, boolean fH, boolean fV) {
+        int leftLen, rightLen;
+        int leftSlope, rightSlope;   // 0 = \, 1 = /
+
+        if (shape == 0) {
+            if (!fH && !fV) {
+                leftSlope = 0; rightSlope = 0; leftLen = p1; rightLen = p2;
+            } else if (!fH && fV) {
+                leftSlope = 1; rightSlope = 1; leftLen = p2; rightLen = p1;
+            } else if (fH && !fV) {
+                leftSlope = 1; rightSlope = 1; leftLen = p1; rightLen = p2;
+            } else { // fH && fV
+                leftSlope = 0; rightSlope = 0; leftLen = p2; rightLen = p1;
+            }
+        } else { // shape == 1
+            if (!fH && !fV) {
+                leftSlope = 0; rightSlope = 1; leftLen = p1; rightLen = p2;
+            } else if (!fH && fV) {
+                leftSlope = 0; rightSlope = 1; leftLen = p2; rightLen = p1;
+            } else if (fH && !fV) {
+                leftSlope = 1; rightSlope = 0; leftLen = p1; rightLen = p2;
+            } else { // fH && fV
+                leftSlope = 1; rightSlope = 0; leftLen = p2; rightLen = p1;
+            }
+        }
+
+        int x_tl, x_bl;
+        if (leftSlope == 0) {       // \ : top links is linker punt
+            x_tl = 0;
+            x_bl = leftLen;
+        } else {                    // / : bottom links is linker punt
+            x_bl = 0;
+            x_tl = leftLen;
+        }
+
+        int x_tr, x_br;
+        if (rightSlope == 0) {      // \ : bottom rechts is rechter punt
+            x_br = L;
+            x_tr = L - rightLen;
+        } else {                    // / : top rechts is rechter punt
+            x_tr = L;
+            x_br = L - rightLen;
+        }
+
+        // volgorde voor Polygon: top-links, top-rechts, bottom-rechts, bottom-links
+        return new int[]{x_tl, x_tr, x_br, x_bl};
+    }
+
     private static class DualValueRowPanel extends JPanel {
         private final Trapezoid trapezoid;
         private final double piValue;
@@ -254,24 +302,16 @@ public class SolutionViewer extends JFrame {
                     int marginY = 15;
                     int shapeHeight = 40;
 
-                    // Vaste schaal voor de items links, we gebruiken 1200 als referentiebreedte op scherm
                     double scale = 500.0 / 4200.0;
 
                     int L = trapezoid.getTotalLength();
                     int p1 = trapezoid.getP1();
                     int p2 = trapezoid.getP2();
+                    int shape = trapezoid.getShapeIndicator();
 
-                    int[] xPts = new int[4];
+                    // Teken het origineel, ongeflipt trapezium (fH=false, fV=false)
+                    int[] xPts = computeLocalCoords(L, p1, p2, shape, false, false);
                     int[] yPts = {0, 0, shapeHeight, shapeHeight};
-
-                    // Basisweergave voor duals is origineel (ongeflitpt)
-                    if (trapezoid.getShapeIndicator() == 0) {
-                        xPts[0] = 0;           xPts[1] = L - p2;
-                        xPts[2] = L;           xPts[3] = p1;
-                    } else {
-                        xPts[0] = 0;           xPts[1] = L;
-                        xPts[2] = L - p2;      xPts[3] = p1;
-                    }
 
                     int[] drawXPts = new int[4];
                     int[] drawYPts = new int[4];
@@ -288,7 +328,7 @@ public class SolutionViewer extends JFrame {
                     g2d.drawPolygon(drawXPts, drawYPts, 4);
 
                     g2d.setColor(Color.BLACK);
-                    g2d.drawString(String.format("L: %d | p1: %d | p2: %d | Vorm: %d", L, p1, p2, trapezoid.getShapeIndicator()), marginX, marginY - 5);
+                    g2d.drawString(String.format("L: %d | p1: %d | p2: %d | Vorm: %d", L, p1, p2, shape), marginX, marginY - 5);
                 }
             };
 
@@ -350,42 +390,13 @@ public class SolutionViewer extends JFrame {
                 int L = t.getTotalLength();
                 int p1 = t.getP1();
                 int p2 = t.getP2();
+                int shape = t.getShapeIndicator();
+                boolean fH = t.isFlippedHorizontally();
+                boolean fV = t.isFlippedVertically();
 
-                int[] xPts = new int[4];
+                // Bereken lokale coördinaten met de juiste oriëntatietabel
+                int[] xPts = computeLocalCoords(L, p1, p2, shape, fH, fV);
                 int[] yPts = {0, 0, shapeHeight, shapeHeight};
-
-                boolean flipH = t.isFlippedHorizontally();
-                boolean flipV = t.isFlippedVertically();
-
-                if (t.getShapeIndicator() == 0) {
-                    if (!flipH && !flipV) { // \ \
-                        xPts[0] = 0;           xPts[1] = L - p2;
-                        xPts[2] = L;           xPts[3] = p1;
-                    } else if (!flipH && flipV) { // //
-                        xPts[0] = p1;          xPts[1] = L;
-                        xPts[2] = L - p2;      xPts[3] = 0;
-                    } else if (flipH && !flipV) { // //
-                        xPts[0] = p2;          xPts[1] = L;
-                        xPts[2] = L - p1;      xPts[3] = 0;
-                    } else { // flipH && flipV -> \ \
-                        xPts[0] = 0;           xPts[1] = L - p1;
-                        xPts[2] = L;           xPts[3] = p2;
-                    }
-                } else { // Vorm 1
-                    if (!flipH && !flipV) { // \ /
-                        xPts[0] = 0;           xPts[1] = L;
-                        xPts[2] = L - p2;      xPts[3] = p1;
-                    } else if (!flipH && flipV) { // \ /
-                        xPts[0] = 0;           xPts[1] = L;
-                        xPts[2] = L - p2;      xPts[3] = p1;
-                    } else if (flipH && !flipV) { // / \
-                        xPts[0] = p2;          xPts[1] = L - p1;
-                        xPts[2] = L;           xPts[3] = 0;
-                    } else { // flipH && flipV -> / \
-                        xPts[0] = p2;          xPts[1] = L - p1;
-                        xPts[2] = L;           xPts[3] = 0;
-                    }
-                }
 
                 int[] drawXPts = new int[4];
                 int[] drawYPts = new int[4];
@@ -401,11 +412,12 @@ public class SolutionViewer extends JFrame {
                 g2d.setStroke(new BasicStroke(1.2f));
                 g2d.drawPolygon(drawXPts, drawYPts, 4);
 
+                // Bereken de juiste overlap voor het volgende item
                 if (i < pattern.getItems().size() - 1) {
                     Trapezoid nextT = pattern.getItems().get(i + 1);
 
-                    int rightProj = t.isFlippedHorizontally() ? t.getP1() : t.getP2();
-                    int leftProjNext = nextT.isFlippedHorizontally() ? nextT.getP2() : nextT.getP1();
+                    int rightProj = t.getRightProjectionLength();      // houdt rekening met fV
+                    int leftProjNext = nextT.getLeftProjectionLength(); // houdt rekening met fV
 
                     int overlap = Math.min(rightProj, leftProjNext);
                     currentXOffset += (L - overlap);

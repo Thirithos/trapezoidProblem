@@ -13,7 +13,6 @@ import be.kuleuven.optimalisatie.solution.SolutionWriter;
 import com.gurobi.gurobi.*;
 
 import javax.swing.SwingUtilities;
-import java.util.HashMap;
 import java.util.List;
 
 public class Main {
@@ -24,7 +23,7 @@ public class Main {
             return;
         }
 
-        for (int i =0 ; i<20 ; i++) {
+        for (int i =0 ; i<1 ; i++) {
             TrussProblem currentProblem = problems.get(i);
             System.out.println("Probleem geladen: " + currentProblem.getFileName());
 
@@ -32,15 +31,14 @@ public class Main {
             SolutionWriter.initializeFile(outputPath, currentProblem.getFileName());
 
             System.out.println("Starten van First Fit Decreasing algoritme...");
+            long iterStart = System.currentTimeMillis();
             FirstFitDecreasing ffd = new FirstFitDecreasing(currentProblem);
             Solution initialSolution = ffd.solve();
 
             for (Pattern pattern : initialSolution.getPatterns()) {
                 System.out.println("Patroon " + initialSolution.getPatterns().indexOf(pattern) + ": " + pattern.getItems().size() + " items, Count: " + pattern.getCount() + ", Gebruikt: " + pattern.getUsedLength() + "/4200");
-                if (pattern.getUsedLength() > 4200) {
-                    System.err.println("Waarschuwing: Patroon overschrijdt de maximale lengte van 4200. Gebruikt: " + pattern.getUsedLength());
-                }
             }
+            long iterDuration = System.currentTimeMillis() - iterStart;
 
             System.out.println("LB= " + initialSolution.getLowerBound() + ", UB= " + initialSolution.getUpperBound());
 
@@ -52,7 +50,8 @@ public class Main {
                     initialSolution.getLowerBound(),
                     initialSolution.getUpperBound(),
                     initialSolution.getDualValues(),                    // duale waarden
-                    initialSolution.getPatterns()
+                    initialSolution.getPatterns(),
+                    iterDuration
             );
 
             System.out.println("Initiële oplossing succesvol weggeschreven naar: " + outputPath);
@@ -65,10 +64,13 @@ public class Main {
                 env.set("LogFile", "gurobi.log");
                 env.start();
 
+                iterStart = System.currentTimeMillis();
                 rmp = new RMP(currentProblem, initialSolution.getPatterns(), env);
                 rmp.addPatterns(initialSolution.getPatterns());
                 int iterationNumber = 1;
                 Solution RMPSolution = rmp.solve(iterationNumber);
+
+                iterDuration = System.currentTimeMillis() - iterStart;
 
                 System.out.println("RMP Oplossing Iteratie 1: LB= " + RMPSolution.getLowerBound() + ", UB= " + RMPSolution.getUpperBound());
 
@@ -78,19 +80,22 @@ public class Main {
                         RMPSolution.getLowerBound(),
                         RMPSolution.getUpperBound(),
                         RMPSolution.getDualValues(),
-                        RMPSolution.getPatterns()
+                        RMPSolution.getPatterns(),
+                        iterDuration
                 );
 
                 Solution RMPSolutionAfterNewPattern = RMPSolution;
                 while (true) {
                     iterationNumber++;
-                    SubProblem columnGenration = new SubProblem(currentProblem, RMPSolutionAfterNewPattern.getPatterns(), env);
+                    SubProblem columnGenration = new SubProblem(currentProblem, env);
+                    iterStart = System.currentTimeMillis();
                     Pattern newPattern = columnGenration.solve(RMPSolutionAfterNewPattern.getDualValues());
 
                     if(newPattern == null) break;
 
                     rmp.addPattern(newPattern);
                     RMPSolutionAfterNewPattern = rmp.solve(iterationNumber);
+                    iterDuration = System.currentTimeMillis() - iterStart;
 
                     System.out.println("RMP Oplossing Iteratie "+ iterationNumber +": LB= " + RMPSolutionAfterNewPattern.getLowerBound() + ", UB= " + RMPSolutionAfterNewPattern.getUpperBound());
 
@@ -100,7 +105,8 @@ public class Main {
                             RMPSolutionAfterNewPattern.getLowerBound(),
                             RMPSolutionAfterNewPattern.getUpperBound(),
                             RMPSolutionAfterNewPattern.getDualValues(),
-                            RMPSolutionAfterNewPattern.getPatterns()
+                            RMPSolutionAfterNewPattern.getPatterns(),
+                            iterDuration
                     );
 
                 }
