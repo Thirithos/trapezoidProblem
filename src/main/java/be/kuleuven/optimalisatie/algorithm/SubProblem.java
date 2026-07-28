@@ -74,7 +74,7 @@ public class SubProblem {
 
         Pattern pattern;
         try {
-            pattern = solveWithCapacity(maxItems, dualValues, itemTypeCount, iteration);
+            pattern = solve(maxItems, dualValues, itemTypeCount, iteration);
         } catch (GRBException e) {
             e.printStackTrace();
             return null;
@@ -100,7 +100,7 @@ public class SubProblem {
         return null;
     }
 
-    private Pattern solveWithCapacity(int maxItems, List<Double> dualValues, int numItemTypes, int iteration) throws GRBException {
+    private Pattern solve(int maxItems, List<Double> dualValues, int numItemTypes, int iteration) throws GRBException {
         try {
             model = new GRBModel(env);
             model.set(GRB.StringAttr.ModelName, "PricingProblem");
@@ -123,7 +123,7 @@ public class SubProblem {
                 o[k] = model.addVar(0.0, binLength, 0.0, GRB.CONTINUOUS, "o_" + k);
             }
 
-            // Objective functie: max w = sum(pi[i] * sul(y[i][flippedVertical][k])) dus de totale winst van duale waarden (pi[i]) van gebruikte items (sum(y[i][flippedVertical][k])) in het nieuwe patroon
+            // Objective functie: max w = pi[i] * y[i][flippedVertical][k] dus de totale winst van duale waarden (pi[i]) van gebruikte items (sum(y[i][flippedVertical][k])) in het nieuwe patroon
             GRBLinExpr objective = new GRBLinExpr();
             for (int i = 0; i < numItemTypes; i++) {
                 double pi = dualValues.get(i);
@@ -217,10 +217,9 @@ public class SubProblem {
             }
             model.addConstr(totalLengthExpr, GRB.LESS_EQUAL, binLength, "Max_Bin_Length");
             model.update();
-            model.write("src/main/resources/ModelsDebug/" + problem.getFileName().replace(".txt","") + "/sub_iter_" + iteration + ".lp");
+            //model.write("src/main/resources/ModelsDebug/" + problem.getFileName().replace(".txt","") + "/sub_iter_" + iteration + ".lp");
             model.optimize();
 
-            int status = model.get(GRB.IntAttr.Status);
             Pattern newPattern = null;
 
             int solCount = model.get(GRB.IntAttr.SolCount);

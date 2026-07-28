@@ -28,7 +28,7 @@ public class SolutionViewer extends JFrame {
     private TrussProblem currentTrussProblem;
 
     public SolutionViewer() {
-        setTitle("Optimalisatie Solution Viewer");
+        setTitle("Solution Viewer");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1300, 800);
         setLocationRelativeTo(null);

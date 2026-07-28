@@ -86,7 +86,7 @@ public class RMP  {
                     }
                 }
 
-                demandConstraints[i] = model.addConstr(expressions[i], GRB.GREATER_EQUAL, demand, "Demand_Type_" + i);
+                demandConstraints[i] = model.addConstr(expressions[i], GRB.GREATER_EQUAL, demand, "Demand_For_Type_" + i);
             }
 
             model.update();
@@ -109,24 +109,24 @@ public class RMP  {
                 System.out.println("Objective Value (Z): " + objVal);
                 System.out.println();
 
-                System.out.println("GEBRUIKTE PATRONEN (Variabelen xj)");
+                //System.out.println("GEBRUIKTE PATRONEN (Variabelen xj)");
                 for (int j = 0; j < patterns.size(); j++) {
                     double variableValue = x[j].get(GRB.DoubleAttr.X);
                     Pattern p = patterns.get(j);
 
                     p.setUsed(true);
                     p.setCount(variableValue);
-                    System.out.println(x[j].get(GRB.StringAttr.VarName) + " = " + variableValue);
+                    //System.out.println(x[j].get(GRB.StringAttr.VarName) + " = " + variableValue);
 
                     solution.addPattern(p);
                 }
                 System.out.println();
 
-                System.out.println("DUALE WAARDEN (Pi) PER ITEM TYPE");
+                //System.out.println("DUALE WAARDEN (Pi) PER ITEM TYPE");
                 List<Double> dualValues = new ArrayList<>();
                 for (int i = 1; i <= itemTypeCount; i++) {
                     double dualValue = demandConstraints[i].get(GRB.DoubleAttr.Pi);
-                    System.out.println(demandConstraints[i].get(GRB.StringAttr.ConstrName) + " = " + dualValue);
+                    //System.out.println("Duale waarde voor constraint :" + demandConstraints[i].get(GRB.StringAttr.ConstrName) + " = " + dualValue);
                     dualValues.add(dualValue);
                 }
                 solution.setDualValues(dualValues);

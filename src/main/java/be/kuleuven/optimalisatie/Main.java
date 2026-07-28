@@ -7,10 +7,12 @@ import be.kuleuven.optimalisatie.probleminstance.TrussProblem;
 import be.kuleuven.optimalisatie.solution.Pattern;
 import be.kuleuven.optimalisatie.solution.Solution;
 import be.kuleuven.optimalisatie.solution.SolutionWriter;
+import be.kuleuven.optimalisatie.solution.SolutionReader;
 
 import com.gurobi.gurobi.*;
 
 import javax.swing.SwingUtilities;
+import java.io.File;
 import java.util.List;
 
 public class Main {
@@ -21,87 +23,82 @@ public class Main {
             return;
         }
 
-        for (int i =problems.size()-1 ; i<problems.size() ; i++) {
+        for (int i = 400; i < 600; i++) {
             TrussProblem currentProblem = problems.get(i);
-            System.out.println("Probleem geladen: " + currentProblem.getFileName());
+            System.out.println("Oplossen van probleem " + (i + 1) + "/" + problems.size() + ": " + currentProblem.getFileName());
 
-            String outputPath = "src/main/resources/solutions/" + currentProblem.getFileName() + "_solution.txt";
-            SolutionWriter.initializeFile(outputPath, currentProblem.getFileName());
-
-            System.out.println("Starten van First Fit Decreasing algoritme...");
-            long iterStart = System.currentTimeMillis();
-            FirstFitDecreasing ffd = new FirstFitDecreasing(currentProblem);
-            Solution initialSolution = ffd.solve();
-
-            for (Pattern pattern : initialSolution.getPatterns()) {
-                System.out.println("Patroon " + initialSolution.getPatterns().indexOf(pattern) + ": " + pattern.getItems().size() + " items, Count: " + pattern.getCount() + ", Gebruikt: " + pattern.getUsedLength() + "/4200");
-            }
-            long iterDuration = System.currentTimeMillis() - iterStart;
-
-            System.out.println("LB= " + initialSolution.getLowerBound() + ", UB= " + initialSolution.getUpperBound());
-
-            initialSolution.getPatterns().forEach(p -> p.setUsed(true));
-
-            SolutionWriter.appendIteration(
-                    outputPath,
-                    "Initial solution after FFD",
-                    0,
-                    initialSolution.getLowerBound(),
-                    initialSolution.getUpperBound(),
-                    initialSolution.getDualValues(),                    // duale waarden
-                    initialSolution.getPatterns(),
-                    iterDuration
-            );
-
-            System.out.println("Initiële oplossing succesvol weggeschreven naar: " + outputPath);
-
-            GRBEnv env;
-            RMP rmp;
+            String outputPath = "src/main/resources/solutions/" + currentProblem.getFileName().substring(0,9) + "_solution.txt";
+            File file = new File(outputPath);
 
             try {
-                env = new GRBEnv(true);
+                GRBEnv env = new GRBEnv(true);
                 env.set("LogFile", "gurobi.log");
                 env.start();
 
-                iterStart = System.currentTimeMillis();
-                rmp = new RMP(currentProblem, env);
-                rmp.addPatterns(initialSolution.getPatterns());
-                int iterationNumber = 1;
-                Solution RMPSolution = rmp.solve(iterationNumber);
+                RMP rmp = new RMP(currentProblem, env);
+                int iterationNumber;
+                Solution RMPSolutionAfterNewPattern;
 
-                iterDuration = System.currentTimeMillis() - iterStart;
+                if (file.exists()) {
+                    System.out.println("Bestaand logbestand gevonden. Inlezen van de laatste opgeslagen status...");
+                    SolutionReader.ParsedState lastState = SolutionReader.readLastIteration(outputPath);
 
-                System.out.println("RMP Oplossing Iteratie 1: LB= " + RMPSolution.getLowerBound() + ", UB= " + RMPSolution.getUpperBound());
+                    if (lastState == null) {
+                        System.err.println("Bestand kon niet correct worden uitgelezen. Verwijder het handmatig en start opnieuw.");
+                        env.dispose();
+                        continue;
+                    }
 
-                SolutionWriter.appendIteration(
-                        outputPath,
-                        "RMP after FFD: ",
-                        iterationNumber,
-                        RMPSolution.getLowerBound(),
-                        RMPSolution.getUpperBound(),
-                        RMPSolution.getDualValues(),
-                        RMPSolution.getPatterns(),
-                        iterDuration
-                );
+                    if (lastState.stepName != null && lastState.stepName.contains("ILP")) {
+                        System.out.println("Dit probleem is al volledig afgerond (ILP voltooid). Overslaan...");
+                        env.dispose();
+                        continue;
+                    }
 
-                Solution RMPSolutionAfterNewPattern = RMPSolution;
-                while (true) {
-                    iterationNumber++;
-                    SubProblem columnGenration = new SubProblem(currentProblem, env);
-                    iterStart = System.currentTimeMillis();
-                    Pattern newPattern = columnGenration.solve(RMPSolutionAfterNewPattern.getDualValues(), iterationNumber);
+                    rmp.addPatterns(lastState.patterns);
+                    iterationNumber = lastState.iteration;
 
-                    if(newPattern == null) break;
-
-                    rmp.addPattern(newPattern);
                     RMPSolutionAfterNewPattern = rmp.solve(iterationNumber);
-                    iterDuration = System.currentTimeMillis() - iterStart;
 
-                    System.out.println("RMP Oplossing Iteratie "+ iterationNumber +": LB= " + RMPSolutionAfterNewPattern.getLowerBound() + ", UB= " + RMPSolutionAfterNewPattern.getUpperBound());
+                } else {
+                    // bestand bestaat niet
+                    SolutionWriter.initializeFile(outputPath, currentProblem.getFileName());
+
+                    long iterStart = System.currentTimeMillis();
+                    FirstFitDecreasing ffd = new FirstFitDecreasing(currentProblem);
+                    Solution initialSolution = ffd.solve();
+
+                    for (Pattern pattern : initialSolution.getPatterns()) {
+                        System.out.println("Patroon " + initialSolution.getPatterns().indexOf(pattern) + ": " + pattern.getItems().size() + " items, Count: " + pattern.getCount() + ", Gebruikt: " + pattern.getUsedLength() + "/4200");
+                    }
+                    long iterDuration = System.currentTimeMillis() - iterStart;
+                    System.out.println("tijd FFD: " + iterDuration + " ms");
+
+                    initialSolution.getPatterns().forEach(p -> p.setUsed(true));
 
                     SolutionWriter.appendIteration(
                             outputPath,
-                            "RMP Iteration: " + iterationNumber,
+                            "Initial solution after FFD",
+                            0,
+                            initialSolution.getLowerBound(),
+                            initialSolution.getUpperBound(),
+                            initialSolution.getDualValues(),
+                            initialSolution.getPatterns(),
+                            iterDuration
+                    );
+
+                    rmp.addPatterns(initialSolution.getPatterns());
+                    iterationNumber = 1;
+
+                    iterStart = System.currentTimeMillis();
+                    RMPSolutionAfterNewPattern = rmp.solve(iterationNumber);
+                    iterDuration = System.currentTimeMillis() - iterStart;
+
+                    System.out.println("RMP Oplossing Iteratie 1: LB= " + RMPSolutionAfterNewPattern.getLowerBound() + ", UB= " + RMPSolutionAfterNewPattern.getUpperBound() +" tijd: " + iterDuration + " ms");
+
+                    SolutionWriter.appendIteration(
+                            outputPath,
+                            "RMP after FFD: ",
                             iterationNumber,
                             RMPSolutionAfterNewPattern.getLowerBound(),
                             RMPSolutionAfterNewPattern.getUpperBound(),
@@ -111,10 +108,54 @@ public class Main {
                     );
                 }
 
+                while (true) {
+                    iterationNumber++;
+                    SubProblem columnGeneration = new SubProblem(currentProblem, env);
+
+                    long iterStart1 = System.currentTimeMillis();
+                    Pattern newPattern = columnGeneration.solve(RMPSolutionAfterNewPattern.getDualValues(), iterationNumber);
+                    long subProblemDuration = System.currentTimeMillis() - iterStart1;
+                    System.out.println("Subprobleem Oplossing Iteratie "+ iterationNumber+ ": tijd: " + subProblemDuration + " ms");
+
+                    if(newPattern == null) {
+                        SolutionWriter.appendIteration(
+                                outputPath,
+                                "Subproblem Timeout or No New Pattern Found",
+                                iterationNumber,
+                                RMPSolutionAfterNewPattern.getLowerBound(),
+                                RMPSolutionAfterNewPattern.getUpperBound(),
+                                RMPSolutionAfterNewPattern.getDualValues(),
+                                RMPSolutionAfterNewPattern.getPatterns(),
+                                subProblemDuration
+                        );
+                        break;
+                    }
+
+                    long iterStart2 = System.currentTimeMillis();
+                    rmp.addPattern(newPattern);
+                    RMPSolutionAfterNewPattern = rmp.solve(iterationNumber);
+                    long rmpDuration = System.currentTimeMillis() - iterStart2;
+
+                    long totalIterationDuration = subProblemDuration + rmpDuration;
+
+                    System.out.println("RMP Oplossing Iteratie "+ iterationNumber +": LB= " + RMPSolutionAfterNewPattern.getLowerBound() + ", UB= " + RMPSolutionAfterNewPattern.getUpperBound()+ " tijd: " + rmpDuration + " ms");
+
+                    SolutionWriter.appendIteration(
+                            outputPath,
+                            "RMP Iteration: " + iterationNumber,
+                            iterationNumber,
+                            RMPSolutionAfterNewPattern.getLowerBound(),
+                            RMPSolutionAfterNewPattern.getUpperBound(),
+                            RMPSolutionAfterNewPattern.getDualValues(),
+                            RMPSolutionAfterNewPattern.getPatterns(),
+                            totalIterationDuration
+                    );
+                }
+
                 DivingHeuristic divingHeuristic = new ILPHeuristic(rmp.getModel());
-                iterStart = System.currentTimeMillis();
+                long iterStartILP = System.currentTimeMillis();
                 Solution finalSolution = divingHeuristic.solve(RMPSolutionAfterNewPattern);
-                iterDuration = System.currentTimeMillis() - iterStart;
+                long iterDurationILP = System.currentTimeMillis() - iterStartILP;
 
                 System.out.println("Finale Oplossing na Diving Heuristic: LB= " + finalSolution.getLowerBound() + ", UB= " + finalSolution.getUpperBound());
                 SolutionWriter.appendIteration(
@@ -125,20 +166,13 @@ public class Main {
                         finalSolution.getUpperBound(),
                         finalSolution.getDualValues(),
                         finalSolution.getPatterns(),
-                        iterDuration
+                        iterDurationILP
                 );
 
                 env.dispose();
             } catch (GRBException e) {
                 throw new RuntimeException(e);
             }
-
         }
-
-        System.out.println("Starten van de Solution Viewer GUI...");
-        SwingUtilities.invokeLater(() -> {
-            SolutionViewer viewer = new SolutionViewer();
-            viewer.setVisible(true);
-        });
     }
 }
