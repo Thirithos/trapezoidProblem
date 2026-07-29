@@ -39,17 +39,12 @@ public class SolutionReader {
                 }
 
                 if (line.startsWith("STEP=")) {
-                    // Als we aan een nieuwe stap beginnen, slaan we de vorige (indien voltooid) op als de laatste
                     if (currentState != null) {
                         latestState = currentState;
                     }
                     currentState = new ParsedState();
                     currentState.stepName = line.substring(5);
                     continue;
-                }
-
-                if (currentState == null) {
-                    continue; // Beveiliging voor het geval de file een vreemde opmaak heeft
                 }
 
                 if (line.startsWith("ITERATION=")) {

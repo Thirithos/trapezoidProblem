@@ -1,7 +1,6 @@
 package be.kuleuven.optimalisatie;
 
 import be.kuleuven.optimalisatie.algorithm.*;
-import be.kuleuven.optimalisatie.gui.SolutionViewer;
 import be.kuleuven.optimalisatie.probleminstance.DataLoader;
 import be.kuleuven.optimalisatie.probleminstance.TrussProblem;
 import be.kuleuven.optimalisatie.solution.Pattern;
@@ -11,7 +10,6 @@ import be.kuleuven.optimalisatie.solution.SolutionReader;
 
 import com.gurobi.gurobi.*;
 
-import javax.swing.SwingUtilities;
 import java.io.File;
 import java.util.List;
 
@@ -23,11 +21,11 @@ public class Main {
             return;
         }
 
-        for (int i = 400; i < 600; i++) {
+        for (int i = 0; i < problems.size(); i++) {
             TrussProblem currentProblem = problems.get(i);
             System.out.println("Oplossen van probleem " + (i + 1) + "/" + problems.size() + ": " + currentProblem.getFileName());
 
-            String outputPath = "src/main/resources/solutions/" + currentProblem.getFileName().substring(0,9) + "_solution.txt";
+            String outputPath = "src/main/resources/Solutions/" + currentProblem.getFileName().substring(0,9) + "_solution.txt";
             File file = new File(outputPath);
 
             try {

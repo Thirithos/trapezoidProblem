@@ -161,7 +161,7 @@ public class SubProblem {
 
             // Beperking:
             // sum(y[i][flippedVertical][k]) <= 1 voor alle i en flippedVertical, dus er kan maximaal 1 item in een slot (positie) worden geplaatst.
-            // Beperking:
+            // Beperking voor symmetrei:
             // sum(y[i][flippedVertical][k]) <= sum(y[i][flippedVertical][k-1]) voor alle i en flippedVertical, dus er kan geen item in een slot (positie) worden geplaatst als het vorige slot leeg is.
             GRBLinExpr[] slotUsage = new GRBLinExpr[maxItems];
             for (int k = 0; k < maxItems; k++) {
@@ -222,6 +222,7 @@ public class SubProblem {
 
             Pattern newPattern = null;
 
+            // Solcount geeft aantal feasible oplossingen
             int solCount = model.get(GRB.IntAttr.SolCount);
             if (solCount > 0) {
                 double objVal = model.get(GRB.DoubleAttr.ObjVal);

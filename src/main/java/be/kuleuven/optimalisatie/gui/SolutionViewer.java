@@ -93,7 +93,7 @@ public class SolutionViewer extends JFrame {
     }
 
     private void loadSolutionFile() {
-        JFileChooser fileChooser = new JFileChooser("src/main/resources/solutions");
+        JFileChooser fileChooser = new JFileChooser("src/main/resources/Solutions");
         int result = fileChooser.showOpenDialog(this);
         if (result == JFileChooser.APPROVE_OPTION) {
             File selectedFile = fileChooser.getSelectedFile();

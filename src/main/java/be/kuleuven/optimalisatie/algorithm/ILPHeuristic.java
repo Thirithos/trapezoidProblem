@@ -8,6 +8,8 @@ import com.gurobi.gurobi.GRBException;
 import com.gurobi.gurobi.GRBModel;
 import com.gurobi.gurobi.GRBVar;
 
+import java.util.List;
+
 public class ILPHeuristic implements  DivingHeuristic{
     // Het is een heuristiek want we voegen geen extra patronen toe,
     // we fixeren elke variabele naar een integere waarde en lossen het probleem op als een ILP.
@@ -34,11 +36,11 @@ public class ILPHeuristic implements  DivingHeuristic{
             sol.setUpperBound(objVal);
 
             // dit zorgt dat in de nieuwe oplossing
-            java.util.List<Pattern> lpPatterns = solution.getPatterns();
+            List<Pattern> lpPatterns = solution.getPatterns();
             GRBVar[] vars = model.getVars();
             for (int j = 0; j < vars.length; j++) {
                 double val = vars[j].get(GRB.DoubleAttr.X);
-                if (val > 0.0) {
+                if (val > 0.1) {
                     Pattern p = lpPatterns.get(j);
                     p.setUsed(true);
                     p.setCount(val);
