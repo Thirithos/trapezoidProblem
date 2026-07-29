@@ -381,7 +381,7 @@ public class SolutionViewer extends JFrame {
             g2d.setColor(Color.BLACK);
             g2d.setFont(new Font("SansSerif", Font.BOLD, 12));
             String status = pattern.isUsed() ? "[GEBRUIKT IN RMP]" : "[ONGEBRUIKT]";
-            g2d.drawString(String.format("%s | Count (Xj): %.4f | Totale lengte: %d / %d",
+            g2d.drawString(String.format("%s | Aantal (Xj): %.4f | Totale lengte: %d / %d",
                     status, pattern.getCount(), pattern.getUsedLength(), binLength), marginX, marginY - 15);
 
             g2d.setColor(Color.LIGHT_GRAY);
