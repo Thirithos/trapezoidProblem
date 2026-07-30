@@ -153,14 +153,5 @@ def main():
         print(f"{r['instantie_type']:<4} {r['aantal_items']:<6} {r['aantal_instanties']:<6} "
               f"{r['types_gemiddelde']:7.1f} {tmin_tekst:>22} {ub_tekst:>20} {lb_tekst:>20} {r['tmin_pct']:6.1f}% {r['opt_pct']:6.1f}%")
 
-    csv_bestandsnaam = "samenvatting_tabel.csv"
-    with open(csv_bestandsnaam, 'w', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=['instantie_type','aantal_items','aantal_instanties',
-                                              'types_gemiddelde','tmin_gemiddelde','tmin_std',
-                                              'ub_gemiddelde','ub_std','lb_gemiddelde','lb_std',
-                                              'tmin_pct','opt_pct'])
-        writer.writeheader()
-        writer.writerows(samenvatting)
-
 if __name__ == '__main__':
     main()
