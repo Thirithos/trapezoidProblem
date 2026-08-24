@@ -10,7 +10,7 @@ import com.gurobi.gurobi.GRBVar;
 
 import java.util.List;
 
-public class ILPHeuristic implements  DivingHeuristic{
+public class ILPHeuristic {
     // Het is een heuristiek want we voegen geen extra patronen toe,
     // we fixeren elke variabele naar een integere waarde en lossen het probleem op als een ILP.
     GRBModel model;
@@ -19,7 +19,6 @@ public class ILPHeuristic implements  DivingHeuristic{
         this.model = model;
     }
 
-    @Override
     public Solution solve(Solution solution) {
         // zelfde model als in RMP, maar dan alle variabelen gefixeerd naar een integere waarde
         Solution sol = new Solution(solution.getProblemName());

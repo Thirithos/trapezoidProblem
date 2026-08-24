@@ -16,14 +16,10 @@ import java.util.List;
 public class Main {
     public static void main(String[] args) {
         List<TrussProblem> problems = DataLoader.loadAllProblems();
-        if (problems.isEmpty()) {
-            System.err.println("Geen problemen gevonden om op te lossen. Controleer of de txt-bestanden in src/main/resources/Truss staan.");
-            return;
-        }
 
-        for (int i = 0; i < problems.size(); i++) {
+        for (int i = 70; i < problems.size(); i++) {
             TrussProblem currentProblem = problems.get(i);
-            System.out.println("Oplossen van probleem " + (i + 1) + "/" + problems.size() + ": " + currentProblem.getFileName());
+            System.out.println("Oplossen van instantie " + (i + 1) + "/" + problems.size() + ": " + currentProblem.getFileName());
 
             String outputPath = "src/main/resources/Solutions/" + currentProblem.getFileName().substring(0,9) + "_solution.txt";
             File file = new File(outputPath);
@@ -41,14 +37,8 @@ public class Main {
                     System.out.println("Bestaand logbestand gevonden. Inlezen van de laatste opgeslagen status...");
                     SolutionReader.ParsedState lastState = SolutionReader.readLastIteration(outputPath);
 
-                    if (lastState == null) {
-                        System.err.println("Bestand kon niet correct worden uitgelezen. Verwijder het handmatig en start opnieuw.");
-                        env.dispose();
-                        continue;
-                    }
-
                     if (lastState.stepName != null && lastState.stepName.contains("ILP")) {
-                        System.out.println("Dit probleem is al volledig afgerond (ILP voltooid). Overslaan...");
+                        System.out.println("instantie is al opgelost. Overslaan...");
                         env.dispose();
                         continue;
                     }
@@ -56,8 +46,8 @@ public class Main {
                     rmp.addPatterns(lastState.patterns);
                     iterationNumber = lastState.iteration;
 
+                    // verderdoen
                     RMPSolutionAfterNewPattern = rmp.solve(iterationNumber);
-
                 } else {
                     // bestand bestaat niet
                     SolutionWriter.initializeFile(outputPath, currentProblem.getFileName());
@@ -66,13 +56,18 @@ public class Main {
                     FirstFitDecreasing ffd = new FirstFitDecreasing(currentProblem);
                     Solution initialSolution = ffd.solve();
 
+                    /*
                     for (Pattern pattern : initialSolution.getPatterns()) {
                         System.out.println("Patroon " + initialSolution.getPatterns().indexOf(pattern) + ": " + pattern.getItems().size() + " items, Count: " + pattern.getCount() + ", Gebruikt: " + pattern.getUsedLength() + "/4200");
                     }
+                    */
+
                     long iterDuration = System.currentTimeMillis() - iterStart;
                     System.out.println("tijd FFD: " + iterDuration + " ms");
 
-                    initialSolution.getPatterns().forEach(p -> p.setUsed(true));
+                    for (Pattern pattern : initialSolution.getPatterns()) {
+                        pattern.setUsed(true);
+                    }
 
                     SolutionWriter.appendIteration(
                             outputPath,
@@ -106,6 +101,7 @@ public class Main {
                     );
                 }
 
+                // blijven herhalen tot geen nieuwe patronen meer gevonden worden
                 while (true) {
                     iterationNumber++;
                     SubProblem columnGeneration = new SubProblem(currentProblem, env);
@@ -150,7 +146,7 @@ public class Main {
                     );
                 }
 
-                DivingHeuristic divingHeuristic = new ILPHeuristic(rmp.getModel());
+                ILPHeuristic divingHeuristic = new ILPHeuristic(rmp.getModel());
                 long iterStartILP = System.currentTimeMillis();
                 Solution finalSolution = divingHeuristic.solve(RMPSolutionAfterNewPattern);
                 long iterDurationILP = System.currentTimeMillis() - iterStartILP;

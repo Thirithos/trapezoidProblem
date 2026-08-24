@@ -228,7 +228,7 @@ public class SubProblem {
                 double objVal = model.get(GRB.DoubleAttr.ObjVal);
 
                 if (objVal > 1.0 + 1e-5) {
-                    System.out.println("--> Nieuw patroon gevonden! Doelfunctiewaarde (w): " + objVal);
+                    System.out.println("--> Nieuw patroon gevonden: Doelfunctiewaarde (w): " + objVal);
 
                     newPattern = new Pattern(false);
 
@@ -266,11 +266,6 @@ public class SubProblem {
                         if (!slotFilled) {
                             break;
                         }
-                    }
-
-                    if (newPattern.getUsedLength() > binLength) {
-                        System.err.println("--> WAARSCHUWING: gereconstrueerd patroon overschrijdt binLength (" +
-                                newPattern.getUsedLength() + " > " + binLength + ").");
                     }
                 }
 

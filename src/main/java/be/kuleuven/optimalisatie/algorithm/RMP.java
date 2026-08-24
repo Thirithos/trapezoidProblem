@@ -105,11 +105,11 @@ public class RMP  {
                 double objVal = model.get(GRB.DoubleAttr.ObjVal);
                 solution.setLowerBound(objVal);
 
-                System.out.println("RESULTATEN RMP");
-                System.out.println("Objective Value (Z): " + objVal);
+                System.out.println("results RMP");
+                System.out.println("Doelfunctie waarde: " + objVal);
                 System.out.println();
 
-                //System.out.println("GEBRUIKTE PATRONEN (Variabelen xj)");
+                //System.out.println("Gebruikte Patronen (Variabelen xj)");
                 for (int j = 0; j < patterns.size(); j++) {
                     double variableValue = x[j].get(GRB.DoubleAttr.X);
                     Pattern p = patterns.get(j);
@@ -122,7 +122,6 @@ public class RMP  {
                 }
                 System.out.println();
 
-                //System.out.println("DUALE WAARDEN (Pi) PER ITEM TYPE");
                 List<Double> dualValues = new ArrayList<>();
                 for (int i = 1; i <= itemTypeCount; i++) {
                     double dualValue = demandConstraints[i].get(GRB.DoubleAttr.Pi);
@@ -132,7 +131,7 @@ public class RMP  {
                 solution.setDualValues(dualValues);
 
             } else {
-                System.err.println("Geen optimale oplossing gevonden. Status code: " + optimalStatus);
+                System.err.println("Geen optimale oplossing gevonden. " + optimalStatus);
             }
 
         } catch (GRBException e) {

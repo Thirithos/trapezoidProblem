@@ -8,18 +8,15 @@ public class TrussProblem {
     private final int totalItems;
     private final int numberOfTrapezoidTypes;
     private final int numberOfOrders;
-    //private final int seedIndex;
     private final List<Trapezoid> trapezoids;
 
 
     // bevat wat extra informatie over de probleem instantie zoals, totaal aantal items, en orders.
-    // de seedindex is niet relevant is voor het generen van de probleem instantie
-    public TrussProblem(String fileName, int totalItems, int numberOfTrapezoidTypes, int numberOfOrders, int seedIndex) {
+    public TrussProblem(String fileName, int totalItems, int numberOfTrapezoidTypes, int numberOfOrders) {
         this.fileName = fileName;
         this.totalItems = totalItems;
         this.numberOfTrapezoidTypes = numberOfTrapezoidTypes;
         this.numberOfOrders = numberOfOrders;
-        //this.seedIndex = seedIndex;
         this.trapezoids = new ArrayList<>();
     }
 
@@ -42,12 +39,6 @@ public class TrussProblem {
     public int getNumberOfOrders() {
         return numberOfOrders;
     }
-
-    /*
-    public int getSeedIndex() {
-        return seedIndex;
-    }
-    */
 
     public List<Trapezoid> getTrapezoids() {
         return trapezoids;

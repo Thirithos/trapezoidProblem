@@ -357,10 +357,6 @@ public class SolutionViewer extends JFrame {
             setPreferredSize(new Dimension(1000, 110));
             setMaximumSize(new Dimension(Integer.MAX_VALUE, 110));
             setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Color.LIGHT_GRAY));
-
-            if (!pattern.isUsed()) {
-                setBackground(new Color(245, 245, 245));
-            }
         }
 
         @Override
@@ -380,9 +376,8 @@ public class SolutionViewer extends JFrame {
 
             g2d.setColor(Color.BLACK);
             g2d.setFont(new Font("SansSerif", Font.BOLD, 12));
-            String status = pattern.isUsed() ? "[GEBRUIKT IN RMP]" : "[ONGEBRUIKT]";
-            g2d.drawString(String.format("%s | Aantal (Xj): %.4f | Totale lengte: %d / %d",
-                    status, pattern.getCount(), pattern.getUsedLength(), binLength), marginX, marginY - 15);
+            g2d.drawString(String.format("Aantal (Xj): %.4f | Totale lengte: %d / %d",
+                    pattern.getCount(), pattern.getUsedLength(), binLength), marginX, marginY - 15);
 
             g2d.setColor(Color.LIGHT_GRAY);
             g2d.drawRect(marginX, marginY, drawableWidth, shapeHeight);

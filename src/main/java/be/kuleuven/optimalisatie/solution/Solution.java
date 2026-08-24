@@ -35,9 +35,6 @@ public class Solution {
         return patterns;
     }
 
-    public int getTotalBins() {
-        return patterns.size();
-    }
 
     public double getLowerBound() {
         return lowerBound;
@@ -55,9 +52,6 @@ public class Solution {
         this.upperBound = upperBound;
     }
 
-    public long getExecutionTimeMs() {
-        return executionTimeMs;
-    }
 
     public void setExecutionTimeMs(long executionTimeMs) {
         this.executionTimeMs = executionTimeMs;

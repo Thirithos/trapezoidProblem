@@ -205,7 +205,7 @@ public class ProblemInstanceViewer extends JFrame {
                 };
             }
 
-            g2d.setColor(new Color(135, 206, 250)); // Light Sky Blue
+            g2d.setColor(new Color(135, 206, 250));
             g2d.fillPolygon(xPoints, yPoints, 4);
 
             g2d.setColor(Color.DARK_GRAY);

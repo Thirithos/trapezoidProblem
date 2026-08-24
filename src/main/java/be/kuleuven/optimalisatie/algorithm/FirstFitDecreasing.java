@@ -39,12 +39,12 @@ public class FirstFitDecreasing {
 
         List<Pattern> originalPatterns = new ArrayList<>();
 
-        // onthoud type nul shape ziet er standaard uit:
+        // onthoud type 0 shape ziet er standaard uit:
         //          __________
         //           \              \
         //             \_________\
 
-        // onthoud type een shape ziet er standaard uit:
+        // onthoud type 1 shape ziet er standaard uit:
         //          __________
         //          \             /
         //            \______/

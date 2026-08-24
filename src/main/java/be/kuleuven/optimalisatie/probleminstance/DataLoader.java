@@ -38,9 +38,8 @@ public class DataLoader {
             int totalItems = Integer.parseInt(headerParts[0]);
             int numTypes = Integer.parseInt(headerParts[1]);
             int numOrders = Integer.parseInt(headerParts[2]);
-            int seedIndex = Integer.parseInt(headerParts[3]);
 
-            TrussProblem problem = new TrussProblem(file.getName(), totalItems, numTypes, numOrders, seedIndex);
+            TrussProblem problem = new TrussProblem(file.getName(), totalItems, numTypes, numOrders);
 
             String line;
             while ((line = br.readLine()) != null) {
